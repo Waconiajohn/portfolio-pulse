@@ -1,7 +1,5 @@
 // Centralized Plotly configuration for consistent styling across all charts
 
-import { Layout, Config } from 'plotly.js';
-
 // Dark theme colors matching the advisor UI
 export const PLOTLY_COLORS = {
   background: 'rgba(0,0,0,0)',
@@ -25,7 +23,7 @@ export const CORRELATION_COLORSCALE: Array<[number, string]> = [
 ];
 
 // Default layout configuration
-export const getDefaultLayout = (overrides?: Partial<Layout>): Partial<Layout> => ({
+export const getDefaultLayout = (overrides?: Record<string, unknown>): Record<string, unknown> => ({
   font: {
     family: 'Inter, system-ui, sans-serif',
     color: PLOTLY_COLORS.text,
@@ -55,7 +53,7 @@ export const getDefaultLayout = (overrides?: Partial<Layout>): Partial<Layout> =
 });
 
 // Default config to trim mode bar for client-facing use
-export const getDefaultConfig = (overrides?: Partial<Config>): Partial<Config> => ({
+export const getDefaultConfig = (overrides?: Record<string, unknown>): Record<string, unknown> => ({
   displaylogo: false,
   responsive: true,
   modeBarButtonsToRemove: [
@@ -72,7 +70,7 @@ export const getDefaultConfig = (overrides?: Partial<Config>): Partial<Config> =
 });
 
 // Heatmap-specific layout
-export const getHeatmapLayout = (title: string, labels: string[]): Partial<Layout> => ({
+export const getHeatmapLayout = (title: string, labels: string[]): Record<string, unknown> => ({
   ...getDefaultLayout(),
   title: {
     text: title,
@@ -81,13 +79,13 @@ export const getHeatmapLayout = (title: string, labels: string[]): Partial<Layou
     xanchor: 'left',
   },
   xaxis: {
-    side: 'top' as const,
+    side: 'top',
     tickangle: -45,
     tickfont: { color: PLOTLY_COLORS.textMuted, size: 10 },
     gridcolor: 'transparent',
   },
   yaxis: {
-    autorange: 'reversed' as const,
+    autorange: 'reversed',
     tickfont: { color: PLOTLY_COLORS.textMuted, size: 10 },
     gridcolor: 'transparent',
   },

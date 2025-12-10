@@ -3,7 +3,14 @@ import { Holding, ClientInfo, PlanningChecklist, PortfolioAnalysis } from '@/typ
 import { analyzePortfolio } from '@/lib/analysis-engine';
 import { DIAGNOSTIC_CATEGORIES } from '@/lib/constants';
 import { PortfolioAssumptions, DEFAULT_ASSUMPTIONS, saveAssumptions, loadAssumptions } from '@/lib/assumptions';
-import { ScoringConfig, DEFAULT_SCORING_CONFIG, loadScoringConfig, saveScoringConfig, AdviceModel } from '@/lib/scoring-config';
+import { 
+  ScoringConfig, 
+  DEFAULT_SCORING_CONFIG, 
+  loadScoringConfig, 
+  saveScoringConfig, 
+  AdviceModel,
+  applyRiskToleranceAdjustments 
+} from '@/lib/scoring-config';
 import { SAMPLE_HOLDINGS } from '@/lib/sample-data';
 import { computeCorrelationMatrix, generateSimulatedReturns, analyzeCorrelationIssues, CorrelationMatrixResult } from '@/lib/correlation';
 import { Header } from './Header';
@@ -47,9 +54,14 @@ export function PortfolioDashboard() {
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState('dashboard');
   const [assumptions, setAssumptions] = useState<PortfolioAssumptions>(() => loadAssumptions());
-  const [scoringConfig, setScoringConfig] = useState<ScoringConfig>(() => loadScoringConfig());
+  const [baseScoringConfig, setBaseScoringConfig] = useState<ScoringConfig>(() => loadScoringConfig());
   const [adviceModel, setAdviceModel] = useState<AdviceModel>('self-directed');
   const [advisorFee, setAdvisorFee] = useState(0);
+
+  // Apply risk tolerance adjustments to the scoring config
+  const scoringConfig = useMemo(() => {
+    return applyRiskToleranceAdjustments(baseScoringConfig, clientInfo.riskTolerance);
+  }, [baseScoringConfig, clientInfo.riskTolerance]);
 
   const analysis: PortfolioAnalysis = useMemo(() => {
     return analyzePortfolio(holdings, clientInfo, checklist, scoringConfig, adviceModel, advisorFee);
@@ -75,7 +87,7 @@ export function PortfolioDashboard() {
   }, []);
 
   const handleScoringConfigChange = useCallback((newConfig: ScoringConfig) => {
-    setScoringConfig(newConfig);
+    setBaseScoringConfig(newConfig);
     saveScoringConfig(newConfig);
     toast.success('Scoring benchmarks saved');
   }, []);

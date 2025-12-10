@@ -5,7 +5,9 @@ import {
   DEFAULT_SCORING_CONFIG, 
   AdviceModel, 
   ADVICE_MODEL_LABELS,
-  saveScoringConfig 
+  saveScoringConfig,
+  RISK_TOLERANCE_ADJUSTMENTS,
+  applyRiskToleranceAdjustments
 } from '@/lib/scoring-config';
 import { AssetClass, RiskTolerance } from '@/types/portfolio';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
@@ -14,9 +16,10 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Settings, RotateCcw, Info } from 'lucide-react';
+import { Settings, RotateCcw, Info, Link } from 'lucide-react';
 import { toast } from 'sonner';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { Badge } from '@/components/ui/badge';
 
 interface SettingsPanelProps {
   assumptions: PortfolioAssumptions;
@@ -27,6 +30,7 @@ interface SettingsPanelProps {
   onAdviceModelChange: (model: AdviceModel) => void;
   advisorFee: number;
   onAdvisorFeeChange: (fee: number) => void;
+  currentRiskTolerance: RiskTolerance;
 }
 
 const ASSET_CLASSES: AssetClass[] = ['US Stocks', 'Intl Stocks', 'Bonds', 'Commodities', 'Cash', 'Other'];
@@ -62,8 +66,10 @@ export function SettingsPanel({
   adviceModel,
   onAdviceModelChange,
   advisorFee,
-  onAdvisorFeeChange
+  onAdvisorFeeChange,
+  currentRiskTolerance
 }: SettingsPanelProps) {
+  const adjustments = RISK_TOLERANCE_ADJUSTMENTS[currentRiskTolerance];
   const [open, setOpen] = useState(false);
   const [localAssumptions, setLocalAssumptions] = useState<PortfolioAssumptions>(assumptions);
   const [localConfig, setLocalConfig] = useState<ScoringConfig>(scoringConfig);
@@ -148,14 +154,104 @@ export function SettingsPanel({
           </div>
         </div>
 
-        <Tabs defaultValue="advice" className="mt-4">
+        <Tabs defaultValue="profile" className="mt-4">
           <TabsList className="grid w-full grid-cols-5">
+            <TabsTrigger value="profile">Risk Profile</TabsTrigger>
             <TabsTrigger value="advice">Advice Model</TabsTrigger>
-            <TabsTrigger value="risk">Risk & Concentration</TabsTrigger>
-            <TabsTrigger value="sharpe">Sharpe & Performance</TabsTrigger>
-            <TabsTrigger value="fees">Fee Thresholds</TabsTrigger>
+            <TabsTrigger value="risk">Concentration</TabsTrigger>
+            <TabsTrigger value="sharpe">Performance</TabsTrigger>
             <TabsTrigger value="returns">Returns</TabsTrigger>
           </TabsList>
+
+          {/* Risk Profile Adjustments Tab */}
+          <TabsContent value="profile" className="space-y-6 mt-4">
+            <div className="p-4 bg-primary/10 rounded-lg border border-primary/20">
+              <div className="flex items-center gap-2 mb-3">
+                <Link size={16} className="text-primary" />
+                <h4 className="font-medium text-sm text-primary">Risk-Linked Thresholds</h4>
+                <Badge variant="outline" className="ml-auto">{currentRiskTolerance}</Badge>
+              </div>
+              <p className="text-xs text-muted-foreground mb-4">
+                These thresholds automatically adjust based on the client's risk tolerance. Change the risk profile in the header to see different values.
+              </p>
+              
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-3">
+                  <h5 className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Concentration Limits</h5>
+                  <div className="space-y-2">
+                    <div className="flex justify-between items-center text-sm">
+                      <span>Max Single Position</span>
+                      <span className="font-mono text-primary">{(adjustments.maxSinglePositionPct * 100).toFixed(0)}%</span>
+                    </div>
+                    <div className="flex justify-between items-center text-sm">
+                      <span>Max Sector</span>
+                      <span className="font-mono text-primary">{(adjustments.maxSectorPct * 100).toFixed(0)}%</span>
+                    </div>
+                    <div className="flex justify-between items-center text-sm">
+                      <span>Top 10 Concentration</span>
+                      <span className="font-mono text-primary">{(adjustments.top10ConcentrationMax * 100).toFixed(0)}%</span>
+                    </div>
+                    <div className="flex justify-between items-center text-sm">
+                      <span>Top 3 Concentration</span>
+                      <span className="font-mono text-primary">{(adjustments.top3ConcentrationMax * 100).toFixed(0)}%</span>
+                    </div>
+                  </div>
+                </div>
+                
+                <div className="space-y-3">
+                  <h5 className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Performance & Protection</h5>
+                  <div className="space-y-2">
+                    <div className="flex justify-between items-center text-sm">
+                      <span>Sharpe Target</span>
+                      <span className="font-mono text-primary">{adjustments.sharpeTarget.toFixed(2)}</span>
+                    </div>
+                    <div className="flex justify-between items-center text-sm">
+                      <span>Goal Prob (Green)</span>
+                      <span className="font-mono text-primary">≥{adjustments.goalProbabilityGreenMin}%</span>
+                    </div>
+                    <div className="flex justify-between items-center text-sm">
+                      <span>Goal Prob (Yellow)</span>
+                      <span className="font-mono text-primary">≥{adjustments.goalProbabilityYellowMin}%</span>
+                    </div>
+                    <div className="flex justify-between items-center text-sm">
+                      <span>Protection Sensitivity</span>
+                      <span className="font-mono text-primary">{adjustments.protectionHighRiskThreshold}/10</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="p-4 bg-muted/50 rounded-lg space-y-3">
+              <h4 className="font-medium text-sm">How Risk Profiles Affect Thresholds</h4>
+              <div className="grid grid-cols-3 gap-3 text-xs">
+                <div className="p-3 rounded bg-status-good/10 border border-status-good/20">
+                  <div className="font-medium text-status-good mb-1">Conservative</div>
+                  <ul className="space-y-1 text-muted-foreground">
+                    <li>• Stricter concentration (8%)</li>
+                    <li>• Higher goal prob needed (80%+)</li>
+                    <li>• Lower Sharpe target (0.40)</li>
+                  </ul>
+                </div>
+                <div className="p-3 rounded bg-status-warning/10 border border-status-warning/20">
+                  <div className="font-medium text-status-warning mb-1">Moderate</div>
+                  <ul className="space-y-1 text-muted-foreground">
+                    <li>• Default concentration (10%)</li>
+                    <li>• Standard goal prob (75%+)</li>
+                    <li>• Default Sharpe target (0.50)</li>
+                  </ul>
+                </div>
+                <div className="p-3 rounded bg-status-critical/10 border border-status-critical/20">
+                  <div className="font-medium text-status-critical mb-1">Aggressive</div>
+                  <ul className="space-y-1 text-muted-foreground">
+                    <li>• Lenient concentration (15%)</li>
+                    <li>• Lower goal prob OK (65%+)</li>
+                    <li>• Higher Sharpe target (0.55)</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+          </TabsContent>
 
           {/* Advice Model Tab */}
           <TabsContent value="advice" className="space-y-6 mt-4">

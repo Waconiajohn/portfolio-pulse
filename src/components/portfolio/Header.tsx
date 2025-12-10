@@ -1,6 +1,6 @@
 import { ClientInfo, PortfolioAnalysis, RiskTolerance, Holding } from '@/types/portfolio';
 import { PortfolioAssumptions } from '@/lib/assumptions';
-import { ScoringConfig, AdviceModel } from '@/lib/scoring-config';
+import { ScoringConfig, AdviceModel, ADVICE_MODEL_LABELS } from '@/lib/scoring-config';
 import { HealthScore } from './HealthScore';
 import { MetricCard } from './MetricCard';
 import { SettingsPanel } from './SettingsPanel';
@@ -11,6 +11,8 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { FileDown, ChevronDown, Database } from 'lucide-react';
 import { generatePDF } from '@/lib/pdf-export';
 import { toast } from 'sonner';
+
+const ADVICE_MODELS: AdviceModel[] = ['self-directed', 'advisor-passive', 'advisor-tactical'];
 
 interface HeaderProps {
   clientInfo: ClientInfo;
@@ -150,6 +152,39 @@ export function Header({
               </SelectContent>
             </Select>
           </div>
+          <div className="w-52">
+            <label className="text-xs text-muted-foreground uppercase tracking-wider mb-1 block">
+              Advice Model
+            </label>
+            <Select
+              value={adviceModel}
+              onValueChange={(v) => onAdviceModelChange(v as AdviceModel)}
+            >
+              <SelectTrigger className="h-9">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {ADVICE_MODELS.map(model => (
+                  <SelectItem key={model} value={model}>{ADVICE_MODEL_LABELS[model]}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          {adviceModel !== 'self-directed' && (
+            <div className="w-32">
+              <label className="text-xs text-muted-foreground uppercase tracking-wider mb-1 block">
+                Advisor Fee %
+              </label>
+              <Input
+                type="number"
+                step="0.1"
+                value={(advisorFee * 100).toFixed(2)}
+                onChange={(e) => onAdvisorFeeChange(parseFloat(e.target.value) / 100 || 0)}
+                className="h-9 font-mono"
+                placeholder="1.00"
+              />
+            </div>
+          )}
         </div>
 
         {/* Metrics row */}

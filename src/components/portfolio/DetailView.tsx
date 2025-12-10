@@ -153,26 +153,90 @@ export function DetailView({
   const renderEfficiencyTable = () => {
     if (!details.holdingEfficiency) return null;
     
-    const efficiency = details.holdingEfficiency as Array<{ ticker: string; sharpe: number; contribution: string; weight: number }>;
+    const efficiency = details.holdingEfficiency as Array<{ 
+      ticker: string; 
+      sharpe: number; 
+      contribution: string; 
+      weight: number;
+      pctOfTarget?: number;
+    }>;
 
     return (
       <div className="space-y-2">
         <h4 className="text-sm font-medium">Holding Efficiency</h4>
+        <div className="text-xs text-muted-foreground mb-2">
+          Target: ≥90% of Sharpe target = Good, 70-90% = Below Target, &lt;70% = Poor
+        </div>
         <div className="space-y-1">
           {efficiency.map(h => (
             <div key={h.ticker} className="flex items-center justify-between text-sm p-2 rounded bg-muted/30">
               <span className="font-mono">{h.ticker}</span>
               <div className="flex items-center gap-3">
                 <span className="text-muted-foreground">
-                  Sharpe: {h.sharpe.toFixed(2)}
+                  Sharpe: {h.sharpe.toFixed(2)} {h.pctOfTarget !== undefined && `(${h.pctOfTarget}%)`}
                 </span>
                 <span className={`text-xs px-2 py-0.5 rounded ${
                   h.contribution === 'GOOD' ? 'status-good' : 
-                  h.contribution === 'NEUTRAL' ? 'status-warning' : 'status-critical'
+                  h.contribution === 'BELOW TARGET' ? 'status-warning' : 'status-critical'
                 }`}>
                   {h.contribution}
                 </span>
               </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  };
+
+  const renderProtectionRisks = () => {
+    if (!details.riskDetails) return null;
+    
+    const risks = details.riskDetails as Array<{ 
+      name: string;
+      label: string;
+      score: number;
+      maxScore: number;
+      severity: string;
+      description: string;
+      mitigation: string;
+    }>;
+
+    const getSeverityColor = (severity: string) => {
+      switch (severity) {
+        case 'CRITICAL': return 'status-critical';
+        case 'HIGH': return 'status-warning';
+        case 'MODERATE': return 'bg-yellow-500/20 text-yellow-600';
+        default: return 'status-good';
+      }
+    };
+
+    return (
+      <div className="space-y-3 col-span-2">
+        <h4 className="text-sm font-medium">Risk Category Breakdown</h4>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+          {risks.map(risk => (
+            <div 
+              key={risk.name} 
+              className={`p-3 rounded border ${
+                risk.severity === 'CRITICAL' ? 'bg-status-critical/5 border-status-critical/30' :
+                risk.severity === 'HIGH' ? 'bg-status-warning/5 border-status-warning/30' :
+                'bg-muted/30 border-border'
+              }`}
+            >
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-sm font-medium">{risk.label}</span>
+                <div className="flex items-center gap-2">
+                  <span className="font-mono text-sm">{risk.score}/{risk.maxScore}</span>
+                  <span className={`text-xs px-2 py-0.5 rounded ${getSeverityColor(risk.severity)}`}>
+                    {risk.severity}
+                  </span>
+                </div>
+              </div>
+              <p className="text-xs text-muted-foreground mb-1">{risk.description}</p>
+              {(risk.severity === 'HIGH' || risk.severity === 'CRITICAL') && (
+                <p className="text-xs text-primary">💡 {risk.mitigation}</p>
+              )}
             </div>
           ))}
         </div>
@@ -355,6 +419,7 @@ export function DetailView({
           {renderScenarios()}
           {renderTaxHarvestingTable()}
           {renderPlanningChecklist()}
+          {renderProtectionRisks()}
         </div>
       </CardContent>
     </Card>

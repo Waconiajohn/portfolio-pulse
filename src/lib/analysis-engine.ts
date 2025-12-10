@@ -165,10 +165,14 @@ function analyzeReturnEfficiency(
 ): DiagnosticResult {
   const targetSharpe = config.sharpe.portfolioTarget;
   const sharpeGap = sharpeRatio - targetSharpe;
+  const sharpeRatio100 = targetSharpe > 0 ? (sharpeRatio / targetSharpe) * 100 : 0;
   
-  // Analyze individual holdings
-  const holdingGoodThreshold = config.sharpe.holdingGoodThreshold;
-  const holdingNeutralThreshold = holdingGoodThreshold - config.sharpe.holdingNeutralOffset;
+  // Use proportional thresholds based on target
+  // GOOD: >= 90% of target
+  // BELOW TARGET: 70-90% of target  
+  // POOR: < 70% of target
+  const goodPctThreshold = 0.90;  // Must be at least 90% of target to be "Good"
+  const belowTargetPctThreshold = 0.70;  // Between 70-90% = "Below Target", <70% = "Poor"
 
   const holdingEfficiency = holdings.map(h => {
     const value = h.shares * h.currentPrice;
@@ -177,43 +181,57 @@ function analyzeReturnEfficiency(
     const assetVol = VOLATILITY[h.assetClass] || 0.12;
     const holdingSharpe = assetVol > 0 ? (assetReturn - RISK_FREE_RATE) / assetVol : 0;
     
-    let contribution: 'GOOD' | 'NEUTRAL' | 'POOR';
-    if (holdingSharpe >= holdingGoodThreshold) contribution = 'GOOD';
-    else if (holdingSharpe >= holdingNeutralThreshold) contribution = 'NEUTRAL';
+    // Proportional labeling based on how close to target
+    const pctOfTarget = targetSharpe > 0 ? holdingSharpe / targetSharpe : 0;
+    let contribution: 'GOOD' | 'BELOW TARGET' | 'POOR';
+    if (pctOfTarget >= goodPctThreshold) contribution = 'GOOD';
+    else if (pctOfTarget >= belowTargetPctThreshold) contribution = 'BELOW TARGET';
     else contribution = 'POOR';
 
-    return { ticker: h.ticker, sharpe: holdingSharpe, contribution, weight };
+    return { 
+      ticker: h.ticker, 
+      sharpe: holdingSharpe, 
+      contribution, 
+      weight,
+      pctOfTarget: Math.round(pctOfTarget * 100),
+    };
   });
 
-  // Scoring
-  let score = 50 + sharpeGap * 100;
+  // Scoring based on percentage of target achieved
+  let score: number;
+  if (sharpeRatio >= targetSharpe) {
+    score = 85 + Math.min(15, (sharpeRatio - targetSharpe) * 30);
+  } else {
+    score = Math.max(0, sharpeRatio100 * 0.85);
+  }
   score = Math.max(0, Math.min(100, score));
 
   const status = getStatus(score, config);
 
-  // Consistent key finding
+  // Consistent key finding with percentage context
   let keyFinding: string;
-  if (sharpeGap >= 0) {
+  if (sharpeRatio >= targetSharpe) {
     keyFinding = `Portfolio Sharpe ratio ${sharpeRatio.toFixed(2)} meets or exceeds ${targetSharpe.toFixed(2)} target`;
-  } else if (status === 'RED') {
-    keyFinding = `Portfolio Sharpe ratio ${sharpeRatio.toFixed(2)} is significantly below ${targetSharpe.toFixed(2)} target – poor risk-adjusted returns`;
+  } else if (sharpeRatio100 < 70) {
+    keyFinding = `Portfolio Sharpe ratio ${sharpeRatio.toFixed(2)} is only ${Math.round(sharpeRatio100)}% of ${targetSharpe.toFixed(2)} target – POOR risk-adjusted returns`;
   } else {
-    keyFinding = `Portfolio Sharpe ratio ${sharpeRatio.toFixed(2)} is ${Math.abs(sharpeGap).toFixed(2)} below ${targetSharpe.toFixed(2)} target`;
+    keyFinding = `Portfolio Sharpe ratio ${sharpeRatio.toFixed(2)} is ${Math.round(sharpeRatio100)}% of ${targetSharpe.toFixed(2)} target – below optimal`;
   }
 
   return {
     status,
     score,
     keyFinding,
-    headlineMetric: `Sharpe: ${sharpeRatio.toFixed(2)} vs ${targetSharpe.toFixed(2)} target`,
+    headlineMetric: `Sharpe: ${sharpeRatio.toFixed(2)} (${Math.round(sharpeRatio100)}% of ${targetSharpe.toFixed(2)} target)`,
     details: {
       sharpeRatio,
       targetSharpe,
+      pctOfTarget: Math.round(sharpeRatio100),
       expectedReturn,
       volatility,
       holdingEfficiency: holdingEfficiency.slice(0, 10),
-      holdingGoodThreshold,
-      holdingNeutralThreshold,
+      goodPctThreshold: Math.round(goodPctThreshold * 100),
+      belowTargetPctThreshold: Math.round(belowTargetPctThreshold * 100),
     },
   };
 }
@@ -441,11 +459,31 @@ function analyzeDiversification(
 // ============================================================================
 // 6. PROTECTION & VULNERABILITY
 // ============================================================================
+interface ProtectionRiskDetail {
+  name: string;
+  label: string;
+  score: number;
+  maxScore: number;
+  severity: 'LOW' | 'MODERATE' | 'HIGH' | 'CRITICAL';
+  description: string;
+  mitigation: string;
+}
+
 function analyzeProtection(
   holdings: Holding[], 
   totalValue: number,
   config: ScoringConfig
 ): DiagnosticResult {
+  if (totalValue === 0) {
+    return {
+      status: 'YELLOW',
+      score: 50,
+      keyFinding: 'No holdings to analyze for protection',
+      headlineMetric: 'N/A',
+      details: { riskDetails: [], stockWeight: 0, bondWeight: 0 },
+    };
+  }
+
   const stockWeight = holdings
     .filter(h => h.assetClass === 'US Stocks' || h.assetClass === 'Intl Stocks')
     .reduce((sum, h) => sum + h.shares * h.currentPrice, 0) / totalValue;
@@ -453,44 +491,139 @@ function analyzeProtection(
   const bondWeight = holdings
     .filter(h => h.assetClass === 'Bonds')
     .reduce((sum, h) => sum + h.shares * h.currentPrice, 0) / totalValue;
-
-  const scores = {
-    inflationRisk: Math.round((1 - bondWeight * 0.5) * 10),
-    interestRateRisk: Math.round(bondWeight * 8),
-    marketCrashRisk: Math.round(stockWeight * 10),
-    liquidityRisk: 3,
-    creditRisk: 2,
-  };
+  
+  const commodityWeight = holdings
+    .filter(h => h.assetClass === 'Commodities')
+    .reduce((sum, h) => sum + h.shares * h.currentPrice, 0) / totalValue;
+  
+  const cashWeight = holdings
+    .filter(h => h.assetClass === 'Cash')
+    .reduce((sum, h) => sum + h.shares * h.currentPrice, 0) / totalValue;
+  
+  const intlWeight = holdings
+    .filter(h => h.assetClass === 'Intl Stocks')
+    .reduce((sum, h) => sum + h.shares * h.currentPrice, 0) / totalValue;
 
   const threshold = config.protection.highRiskThreshold;
-  const highRisks = Object.values(scores).filter(s => s > threshold).length;
-  const highRiskAreas = Object.entries(scores)
-    .filter(([_, s]) => s > threshold)
-    .map(([name]) => name.replace('Risk', ''));
 
-  let score = 100 - highRisks * 20;
-  score = Math.max(0, score);
+  // Calculate detailed risk scores with context
+  const getSeverity = (score: number): 'LOW' | 'MODERATE' | 'HIGH' | 'CRITICAL' => {
+    if (score <= 3) return 'LOW';
+    if (score <= 5) return 'MODERATE';
+    if (score <= threshold) return 'HIGH';
+    return 'CRITICAL';
+  };
+
+  const riskDetails: ProtectionRiskDetail[] = [
+    {
+      name: 'inflationRisk',
+      label: 'Inflation Risk',
+      score: Math.round(Math.max(2, 10 - (commodityWeight * 20) - (stockWeight * 5) - (bondWeight * 2))),
+      maxScore: 10,
+      severity: 'LOW',
+      description: 'Risk that inflation erodes purchasing power of your portfolio',
+      mitigation: 'Consider TIPS, commodities, real estate, or I-Bonds',
+    },
+    {
+      name: 'interestRateRisk',
+      label: 'Interest Rate Risk',
+      score: Math.round(bondWeight * 8 + (bondWeight > 0.4 ? 2 : 0)),
+      maxScore: 10,
+      severity: 'LOW',
+      description: 'Risk that rising rates reduce bond values',
+      mitigation: 'Shorten bond duration or diversify into short-term bonds',
+    },
+    {
+      name: 'marketCrashRisk',
+      label: 'Market Crash Risk',
+      score: Math.round(stockWeight * 10),
+      maxScore: 10,
+      severity: 'LOW',
+      description: 'Risk of significant loss during equity market downturns',
+      mitigation: 'Add defensive assets, bonds, or reduce equity concentration',
+    },
+    {
+      name: 'liquidityRisk',
+      label: 'Liquidity Risk',
+      score: Math.round(Math.max(1, 5 - (cashWeight * 20))),
+      maxScore: 10,
+      severity: 'LOW',
+      description: 'Risk of being unable to access funds when needed',
+      mitigation: 'Maintain emergency fund and adequate cash reserves',
+    },
+    {
+      name: 'concentrationRisk',
+      label: 'Geographic Concentration',
+      score: Math.round((1 - intlWeight) * 6),
+      maxScore: 10,
+      severity: 'LOW',
+      description: 'Risk from over-reliance on a single market (e.g., US only)',
+      mitigation: 'Add international diversification',
+    },
+    {
+      name: 'sequenceRisk',
+      label: 'Sequence of Returns Risk',
+      score: Math.round(stockWeight > 0.7 ? 7 : stockWeight > 0.5 ? 5 : 3),
+      maxScore: 10,
+      severity: 'LOW',
+      description: 'Risk that poor returns early in retirement deplete your portfolio',
+      mitigation: 'Consider bucket strategy or bond tent near retirement',
+    },
+  ];
+
+  // Update severity based on calculated scores
+  riskDetails.forEach(risk => {
+    risk.severity = getSeverity(risk.score);
+  });
+
+  const criticalRisks = riskDetails.filter(r => r.severity === 'CRITICAL');
+  const highRisks = riskDetails.filter(r => r.severity === 'HIGH' || r.severity === 'CRITICAL');
+  const moderateRisks = riskDetails.filter(r => r.severity === 'MODERATE');
+
+  // Scoring based on risk distribution
+  let score = 100;
+  score -= criticalRisks.length * 25;
+  score -= highRisks.filter(r => r.severity === 'HIGH').length * 15;
+  score -= moderateRisks.length * 5;
+  score = Math.max(0, Math.min(100, score));
 
   const status = getStatus(score, config);
 
-  // Consistent key finding
+  // Build key finding with specific vulnerabilities
   let keyFinding: string;
-  if (highRisks >= 3) {
-    keyFinding = `Portfolio has GAPS in protection – vulnerable to: ${highRiskAreas.join(', ')}`;
-  } else if (highRisks >= 2) {
-    keyFinding = `Some vulnerability areas detected: ${highRiskAreas.join(', ')}`;
+  if (criticalRisks.length >= 2) {
+    keyFinding = `Portfolio has CRITICAL vulnerabilities: ${criticalRisks.map(r => r.label).join(', ')}`;
+  } else if (criticalRisks.length === 1) {
+    keyFinding = `CRITICAL: ${criticalRisks[0].label} (${criticalRisks[0].score}/10) – ${criticalRisks[0].mitigation}`;
+  } else if (highRisks.length >= 2) {
+    keyFinding = `Elevated risks detected: ${highRisks.map(r => r.label).join(', ')}`;
+  } else if (highRisks.length === 1) {
+    keyFinding = `Elevated ${highRisks[0].label} (${highRisks[0].score}/10) may warrant attention`;
   } else if (status === 'GREEN') {
-    keyFinding = 'Portfolio has adequate protection against major risk factors';
+    keyFinding = 'Portfolio has adequate protection across all major risk categories';
   } else {
-    keyFinding = 'Review protection against inflation and market downturns';
+    keyFinding = 'Some risk exposures present but within acceptable ranges';
   }
+
+  // Build headline metric
+  const worstRisk = riskDetails.reduce((worst, r) => r.score > worst.score ? r : worst, riskDetails[0]);
 
   return {
     status,
     score,
     keyFinding,
-    headlineMetric: `${highRisks} high-risk areas (threshold: ${threshold}/10)`,
-    details: { scores, stockWeight, bondWeight, highRiskAreas, threshold },
+    headlineMetric: `${criticalRisks.length} critical, ${highRisks.length - criticalRisks.length} elevated risks (worst: ${worstRisk.label} ${worstRisk.score}/10)`,
+    details: { 
+      riskDetails,
+      stockWeight, 
+      bondWeight, 
+      commodityWeight,
+      cashWeight,
+      intlWeight,
+      threshold,
+      criticalCount: criticalRisks.length,
+      elevatedCount: highRisks.length,
+    },
   };
 }
 

@@ -1,21 +1,50 @@
-import { ClientInfo, PortfolioAnalysis, RiskTolerance } from '@/types/portfolio';
+import { ClientInfo, PortfolioAnalysis, RiskTolerance, Holding } from '@/types/portfolio';
+import { PortfolioAssumptions } from '@/lib/assumptions';
 import { HealthScore } from './HealthScore';
 import { MetricCard } from './MetricCard';
+import { SettingsPanel } from './SettingsPanel';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
-import { FileDown, Settings } from 'lucide-react';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { FileDown, ChevronDown, Database } from 'lucide-react';
+import { generatePDF } from '@/lib/pdf-export';
+import { toast } from 'sonner';
 
 interface HeaderProps {
   clientInfo: ClientInfo;
   analysis: PortfolioAnalysis;
+  holdings: Holding[];
+  notes: string;
+  assumptions: PortfolioAssumptions;
   onClientInfoChange: (info: ClientInfo) => void;
-  onExport: () => void;
+  onAssumptionsChange: (assumptions: PortfolioAssumptions) => void;
+  onLoadSample: () => void;
 }
 
 const RISK_OPTIONS: RiskTolerance[] = ['Conservative', 'Moderate', 'Aggressive'];
 
-export function Header({ clientInfo, analysis, onClientInfoChange, onExport }: HeaderProps) {
+export function Header({ 
+  clientInfo, 
+  analysis, 
+  holdings,
+  notes,
+  assumptions,
+  onClientInfoChange, 
+  onAssumptionsChange,
+  onLoadSample
+}: HeaderProps) {
+  
+  const handleExport = async (type: 'full' | 'summary' | 'recommendations') => {
+    try {
+      await generatePDF(analysis, holdings, clientInfo, notes, type);
+      toast.success(`${type.charAt(0).toUpperCase() + type.slice(1)} report exported`);
+    } catch (error) {
+      toast.error('Failed to export PDF');
+      console.error(error);
+    }
+  };
+
   return (
     <header className="border-b border-border bg-card/50 backdrop-blur-sm sticky top-0 z-10">
       <div className="container mx-auto px-4 py-4">
@@ -28,13 +57,31 @@ export function Header({ clientInfo, analysis, onClientInfoChange, onExport }: H
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm" onClick={onExport}>
-              <FileDown size={14} className="mr-1.5" />
-              Export PDF
+            <Button variant="outline" size="sm" onClick={onLoadSample} className="gap-2">
+              <Database size={14} />
+              Load Sample
             </Button>
-            <Button variant="ghost" size="icon" className="h-8 w-8">
-              <Settings size={16} />
-            </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm" className="gap-2">
+                  <FileDown size={14} />
+                  Export PDF
+                  <ChevronDown size={12} />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="bg-popover">
+                <DropdownMenuItem onClick={() => handleExport('full')}>
+                  Full Report (2-3 pages)
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => handleExport('summary')}>
+                  Executive Summary (1 page)
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => handleExport('recommendations')}>
+                  Recommendations Only
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+            <SettingsPanel assumptions={assumptions} onUpdate={onAssumptionsChange} />
           </div>
         </div>
 

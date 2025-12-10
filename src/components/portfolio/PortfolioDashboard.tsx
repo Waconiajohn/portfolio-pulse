@@ -4,6 +4,7 @@ import { analyzePortfolio } from '@/lib/analysis-engine';
 import { DIAGNOSTIC_CATEGORIES } from '@/lib/constants';
 import { PortfolioAssumptions, DEFAULT_ASSUMPTIONS, saveAssumptions, loadAssumptions } from '@/lib/assumptions';
 import { SAMPLE_HOLDINGS } from '@/lib/sample-data';
+import { computeCorrelationMatrix, generateSimulatedReturns, analyzeCorrelationIssues, CorrelationMatrixResult } from '@/lib/correlation';
 import { Header } from './Header';
 import { HoldingsTable } from './HoldingsTable';
 import { DiagnosticCard } from './DiagnosticCard';
@@ -13,6 +14,7 @@ import { PlanningChecklistCard } from './PlanningChecklist';
 import { EfficientFrontierChart } from './EfficientFrontierChart';
 import { StressTestChart } from './StressTestChart';
 import { AssetAllocationChart } from './AssetAllocationChart';
+import { CorrelationHeatmap } from '@/components/charts/CorrelationHeatmap';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Textarea } from '@/components/ui/textarea';
@@ -47,6 +49,20 @@ export function PortfolioDashboard() {
   const analysis: PortfolioAnalysis = useMemo(() => {
     return analyzePortfolio(holdings, clientInfo, checklist);
   }, [holdings, clientInfo, checklist]);
+
+  // Compute correlation matrix when holdings change
+  const correlationData: CorrelationMatrixResult = useMemo(() => {
+    if (holdings.length < 2) {
+      return { labels: [], matrix: [] };
+    }
+    const holdingsData = holdings.map(h => ({ ticker: h.ticker, assetClass: h.assetClass }));
+    const returnsBySymbol = generateSimulatedReturns(holdingsData);
+    return computeCorrelationMatrix(returnsBySymbol);
+  }, [holdings]);
+
+  const correlationAnalysis = useMemo(() => {
+    return analyzeCorrelationIssues(correlationData.matrix, correlationData.labels);
+  }, [correlationData]);
 
   const handleAssumptionsChange = useCallback((newAssumptions: PortfolioAssumptions) => {
     setAssumptions(newAssumptions);
@@ -161,10 +177,19 @@ export function PortfolioDashboard() {
           <TabsContent value="charts" className="space-y-6">
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               <EfficientFrontierChart analysis={analysis} holdings={holdings} />
-              <StressTestChart analysis={analysis} />
+              <CorrelationHeatmap 
+                data={correlationData} 
+                title="Holdings Correlation Matrix"
+                description={correlationAnalysis.hasIssues 
+                  ? `${correlationAnalysis.highCorrelations.length} high correlation pairs detected` 
+                  : 'Good diversification across holdings'}
+              />
             </div>
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <StressTestChart analysis={analysis} />
               <AssetAllocationChart holdings={holdings} totalValue={analysis.totalValue} />
+            </div>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               <Card>
                 <CardHeader>
                   <CardTitle className="text-base">Performance Metrics</CardTitle>

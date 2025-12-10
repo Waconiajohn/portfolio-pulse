@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { DiagnosticResult, RiskTolerance, PlanningChecklist, GuaranteedIncomeSource } from '@/types/portfolio';
 import { StatusBadge } from './StatusBadge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -6,6 +7,7 @@ import { X, Check, AlertCircle, Info, TrendingUp } from 'lucide-react';
 import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, AreaChart, Area, ReferenceLine, Legend } from 'recharts';
 import { ScoringConfig, DEFAULT_SCORING_CONFIG, getEducationContent } from '@/lib/scoring-config';
 import { Badge } from '@/components/ui/badge';
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 
 interface DetailViewProps {
   name: string;
@@ -15,6 +17,7 @@ interface DetailViewProps {
   scoringConfig?: ScoringConfig;
   riskTolerance?: RiskTolerance;
   clientAge?: number;
+  inflationRate?: number;
 }
 
 const CHART_COLORS = [
@@ -33,11 +36,13 @@ export function DetailView({
   onClose,
   scoringConfig = DEFAULT_SCORING_CONFIG,
   riskTolerance = 'Moderate',
-  clientAge = 62
+  clientAge = 62,
+  inflationRate = 0.025
 }: DetailViewProps) {
   const { details } = result;
   const educationContent = getEducationContent(scoringConfig, riskTolerance);
   const education = educationContent[categoryKey];
+  const [viewMode, setViewMode] = useState<'nominal' | 'real'>('nominal');
 
   const renderSectorChart = () => {
     if (!details.sectorWeights) return null;
@@ -495,25 +500,64 @@ export function DetailView({
           </div>
         )}
 
-        {/* Income Timeline Chart */}
+        {/* Income Timeline Chart with Inflation Projections */}
         {sources.length > 0 && clientAge && (
           (() => {
-            // Generate timeline data from current age to 95
+            // Generate timeline data from current age to 95 with inflation adjustments
             const endAge = 95;
             const timelineData = [];
             
             for (let age = clientAge; age <= endAge; age++) {
-              const activeSources = sources.filter(s => age >= s.startAge);
-              const incomeAtAge = activeSources.reduce((sum, s) => sum + s.monthlyAmount, 0);
+              const yearsFromNow = age - clientAge;
+              const inflationFactor = Math.pow(1 + inflationRate, yearsFromNow);
               
-              timelineData.push({
-                age,
-                income: incomeAtAge,
-                coreExpenses: coreExpenses,
-                totalExpenses: totalExpenses,
-                coverage: coreExpenses > 0 ? (incomeAtAge / coreExpenses) * 100 : 0,
-                activeSources: activeSources.map(s => s.sourceName || SOURCE_TYPE_LABELS[s.sourceType]).join(', '),
+              // Expenses grow with inflation each year (nominal)
+              const inflatedCoreExpenses = coreExpenses * inflationFactor;
+              const inflatedTotalExpenses = totalExpenses * inflationFactor;
+              
+              // Calculate income at this age, separating COLA vs non-COLA
+              const activeSources = sources.filter(s => age >= s.startAge);
+              let colaIncomeAtAge = 0;
+              let nonColaIncomeAtAge = 0;
+              
+              activeSources.forEach(source => {
+                const yearsActive = age - source.startAge;
+                if (source.inflationAdj) {
+                  // COLA sources grow with inflation from their start date
+                  colaIncomeAtAge += source.monthlyAmount * Math.pow(1 + inflationRate, yearsActive);
+                } else {
+                  // Non-COLA sources stay flat (nominal)
+                  nonColaIncomeAtAge += source.monthlyAmount;
+                }
               });
+              
+              const totalIncomeAtAge = colaIncomeAtAge + nonColaIncomeAtAge;
+              
+              // For "real" view, discount everything back to today's dollars
+              if (viewMode === 'real') {
+                timelineData.push({
+                  age,
+                  colaIncome: colaIncomeAtAge / inflationFactor,
+                  nonColaIncome: nonColaIncomeAtAge / inflationFactor,
+                  totalIncome: totalIncomeAtAge / inflationFactor,
+                  coreExpenses: coreExpenses, // Stays flat in real terms
+                  totalExpenses: totalExpenses,
+                  coverage: coreExpenses > 0 ? (totalIncomeAtAge / inflationFactor / coreExpenses) * 100 : 0,
+                  activeSources: activeSources.map(s => s.sourceName || SOURCE_TYPE_LABELS[s.sourceType]).join(', '),
+                });
+              } else {
+                // Nominal view - show actual dollar amounts
+                timelineData.push({
+                  age,
+                  colaIncome: colaIncomeAtAge,
+                  nonColaIncome: nonColaIncomeAtAge,
+                  totalIncome: totalIncomeAtAge,
+                  coreExpenses: inflatedCoreExpenses,
+                  totalExpenses: inflatedTotalExpenses,
+                  coverage: inflatedCoreExpenses > 0 ? (totalIncomeAtAge / inflatedCoreExpenses) * 100 : 0,
+                  activeSources: activeSources.map(s => s.sourceName || SOURCE_TYPE_LABELS[s.sourceType]).join(', '),
+                });
+              }
             }
 
             // Find key milestone ages
@@ -522,26 +566,69 @@ export function DetailView({
               .map(s => ({ age: s.startAge, name: s.sourceName || SOURCE_TYPE_LABELS[s.sourceType] }))
               .sort((a, b) => a.age - b.age);
 
+            // Calculate purchasing power stats
+            const today = timelineData[0];
+            const age20Years = timelineData.find(d => d.age === clientAge + 20);
+            const coverageToday = today?.coverage || 0;
+            const coverage20Years = age20Years?.coverage || 0;
+            
+            // Calculate non-COLA purchasing power loss over 20 years
+            const nonColaSourcesValue = sources
+              .filter(s => !s.inflationAdj && s.guaranteedForLife)
+              .reduce((sum, s) => sum + s.monthlyAmount, 0);
+            const purchasingPowerLoss20Years = nonColaSourcesValue > 0 
+              ? ((1 - 1 / Math.pow(1 + inflationRate, 20)) * 100)
+              : 0;
+
             // Find age when coverage crosses 100%
             const fullCoverageAge = timelineData.find(d => d.coverage >= 100)?.age;
 
             return (
-              <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <h5 className="text-sm font-medium">Income Activation Timeline</h5>
+              <div className="space-y-4">
+                <div className="flex items-center justify-between flex-wrap gap-2">
+                  <div className="flex items-center gap-3">
+                    <h5 className="text-sm font-medium">Income Activation Timeline</h5>
+                    <ToggleGroup 
+                      type="single" 
+                      value={viewMode} 
+                      onValueChange={(v) => v && setViewMode(v as 'nominal' | 'real')}
+                      size="sm"
+                    >
+                      <ToggleGroupItem value="nominal" className="text-xs px-2 h-7">
+                        Nominal $
+                      </ToggleGroupItem>
+                      <ToggleGroupItem value="real" className="text-xs px-2 h-7">
+                        Real (Today's $)
+                      </ToggleGroupItem>
+                    </ToggleGroup>
+                  </div>
                   {fullCoverageAge && (
                     <Badge variant="outline" className="text-xs bg-status-good/10 text-status-good border-status-good/30">
                       Core covered at age {fullCoverageAge}
                     </Badge>
                   )}
                 </div>
+                
+                {/* Inflation info callout */}
+                <div className="text-xs text-muted-foreground p-2 rounded bg-muted/30 border border-border">
+                  {viewMode === 'nominal' ? (
+                    <>Showing future dollar amounts at <span className="font-mono text-primary">{(inflationRate * 100).toFixed(1)}%</span> annual inflation. Expenses grow; COLA income grows; non-COLA stays flat.</>
+                  ) : (
+                    <>Showing all values in today's purchasing power. Non-COLA income loses value over time.</>
+                  )}
+                </div>
+                
                 <div className="h-64">
                   <ResponsiveContainer width="100%" height="100%">
                     <AreaChart data={timelineData} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
                       <defs>
-                        <linearGradient id="incomeGradient" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="5%" stopColor="hsl(142, 76%, 46%)" stopOpacity={0.4}/>
+                        <linearGradient id="colaIncomeGradient" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%" stopColor="hsl(142, 76%, 46%)" stopOpacity={0.5}/>
                           <stop offset="95%" stopColor="hsl(142, 76%, 46%)" stopOpacity={0.1}/>
+                        </linearGradient>
+                        <linearGradient id="nonColaIncomeGradient" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%" stopColor="hsl(217, 91%, 60%)" stopOpacity={0.5}/>
+                          <stop offset="95%" stopColor="hsl(217, 91%, 60%)" stopOpacity={0.1}/>
                         </linearGradient>
                       </defs>
                       <XAxis 
@@ -561,31 +648,43 @@ export function DetailView({
                         }}
                         formatter={(value: number, name: string) => [
                           `$${value.toLocaleString()}/mo`,
-                          name === 'income' ? 'Guaranteed Income' : name === 'coreExpenses' ? 'Core Expenses' : 'Total Expenses'
+                          name === 'colaIncome' ? 'COLA Income' : 
+                          name === 'nonColaIncome' ? 'Non-COLA Income' :
+                          name === 'coreExpenses' ? 'Core Expenses' : 'Total Expenses'
                         ]}
                         labelFormatter={(age) => `Age ${age}`}
                       />
                       <Legend 
                         formatter={(value) => 
-                          value === 'income' ? 'Guaranteed Income' : 
+                          value === 'colaIncome' ? 'COLA Income (inflation-adjusted)' : 
+                          value === 'nonColaIncome' ? 'Non-COLA Income (fixed)' :
                           value === 'coreExpenses' ? 'Core Expenses' : 'Total Expenses'
                         }
                       />
                       <Area 
                         type="stepAfter" 
-                        dataKey="income" 
+                        dataKey="colaIncome" 
+                        stackId="1"
                         stroke="hsl(142, 76%, 46%)" 
-                        fill="url(#incomeGradient)"
+                        fill="url(#colaIncomeGradient)"
+                        strokeWidth={2}
+                      />
+                      <Area 
+                        type="stepAfter" 
+                        dataKey="nonColaIncome" 
+                        stackId="1"
+                        stroke="hsl(217, 91%, 60%)" 
+                        fill="url(#nonColaIncomeGradient)"
                         strokeWidth={2}
                       />
                       <ReferenceLine 
-                        y={coreExpenses} 
+                        y={viewMode === 'nominal' ? timelineData[0]?.coreExpenses : coreExpenses} 
                         stroke="hsl(45, 93%, 47%)" 
                         strokeDasharray="5 5"
                         strokeWidth={2}
                       />
                       <ReferenceLine 
-                        y={totalExpenses} 
+                        y={viewMode === 'nominal' ? timelineData[0]?.totalExpenses : totalExpenses} 
                         stroke="hsl(0, 84%, 60%)" 
                         strokeDasharray="3 3"
                         strokeWidth={1}
@@ -594,28 +693,77 @@ export function DetailView({
                         <ReferenceLine 
                           key={i}
                           x={m.age} 
-                          stroke="hsl(217, 91%, 60%)" 
+                          stroke="hsl(280, 65%, 60%)" 
                           strokeDasharray="3 3"
-                          label={{ value: m.name, position: 'top', fill: 'hsl(217, 91%, 60%)', fontSize: 10 }}
+                          label={{ value: m.name, position: 'top', fill: 'hsl(280, 65%, 60%)', fontSize: 10 }}
                         />
                       ))}
                     </AreaChart>
                   </ResponsiveContainer>
                 </div>
+                
+                {/* Legend */}
                 <div className="flex flex-wrap gap-3 text-xs">
                   <div className="flex items-center gap-1">
                     <div className="w-3 h-3 rounded" style={{ backgroundColor: 'hsl(142, 76%, 46%)' }} />
-                    <span className="text-muted-foreground">Guaranteed Income</span>
+                    <span className="text-muted-foreground">COLA Income</span>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <div className="w-3 h-3 rounded" style={{ backgroundColor: 'hsl(217, 91%, 60%)' }} />
+                    <span className="text-muted-foreground">Non-COLA Income</span>
                   </div>
                   <div className="flex items-center gap-1">
                     <div className="w-3 h-0.5" style={{ backgroundColor: 'hsl(45, 93%, 47%)' }} />
-                    <span className="text-muted-foreground">Core Expenses (${coreExpenses.toLocaleString()}/mo)</span>
+                    <span className="text-muted-foreground">Core Expenses</span>
                   </div>
                   <div className="flex items-center gap-1">
                     <div className="w-3 h-0.5" style={{ backgroundColor: 'hsl(0, 84%, 60%)' }} />
-                    <span className="text-muted-foreground">Total Expenses (${totalExpenses.toLocaleString()}/mo)</span>
+                    <span className="text-muted-foreground">Total Expenses</span>
                   </div>
                 </div>
+                
+                {/* Purchasing Power Summary */}
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                  <div className="p-3 rounded-lg bg-muted/30 border border-border">
+                    <div className="text-xs text-muted-foreground">Coverage Today</div>
+                    <div className={`font-mono font-semibold text-lg ${
+                      coverageToday >= 100 ? 'text-status-good' : coverageToday >= 80 ? 'text-status-warning' : 'text-status-critical'
+                    }`}>
+                      {coverageToday.toFixed(0)}%
+                    </div>
+                  </div>
+                  <div className="p-3 rounded-lg bg-muted/30 border border-border">
+                    <div className="text-xs text-muted-foreground">Coverage at Age {clientAge + 20}</div>
+                    <div className={`font-mono font-semibold text-lg ${
+                      coverage20Years >= 100 ? 'text-status-good' : coverage20Years >= 80 ? 'text-status-warning' : 'text-status-critical'
+                    }`}>
+                      {coverage20Years.toFixed(0)}%
+                    </div>
+                  </div>
+                  {nonColaSourcesValue > 0 && (
+                    <div className="p-3 rounded-lg bg-status-warning/10 border border-status-warning/20">
+                      <div className="text-xs text-muted-foreground">Non-COLA Value Lost (20yr)</div>
+                      <div className="font-mono font-semibold text-lg text-status-warning">
+                        -{purchasingPowerLoss20Years.toFixed(0)}%
+                      </div>
+                    </div>
+                  )}
+                </div>
+                
+                {/* Inflation Risk Warning */}
+                {nonColaSourcesValue > 0 && (
+                  <div className="p-3 rounded-lg bg-status-warning/10 border border-status-warning/20 flex items-start gap-2">
+                    <AlertCircle size={16} className="text-status-warning mt-0.5 shrink-0" />
+                    <div className="text-sm">
+                      <span className="font-medium text-status-warning">Inflation Risk:</span>{' '}
+                      <span className="text-muted-foreground">
+                        ${nonColaSourcesValue.toLocaleString()}/mo of your guaranteed income is not inflation-adjusted. 
+                        At {(inflationRate * 100).toFixed(1)}% annual inflation, this loses ~{purchasingPowerLoss20Years.toFixed(0)}% 
+                        of purchasing power over 20 years.
+                      </span>
+                    </div>
+                  </div>
+                )}
               </div>
             );
           })()

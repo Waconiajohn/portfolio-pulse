@@ -15,6 +15,7 @@ import { PlanningChecklistCard } from './PlanningChecklist';
 import { EfficientFrontierChart } from './EfficientFrontierChart';
 import { StressTestChart } from './StressTestChart';
 import { AssetAllocationChart } from './AssetAllocationChart';
+import { BenchmarkComparisonChart } from './BenchmarkComparisonChart';
 import { CorrelationHeatmap } from '@/components/charts/CorrelationHeatmap';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -194,6 +195,9 @@ export function PortfolioDashboard() {
           </TabsContent>
 
           <TabsContent value="charts" className="space-y-6">
+            {/* Benchmark Comparison - Full Width */}
+            <BenchmarkComparisonChart analysis={analysis} initialValue={100000} />
+            
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               <EfficientFrontierChart analysis={analysis} holdings={holdings} />
               <CorrelationHeatmap 

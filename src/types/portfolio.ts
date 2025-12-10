@@ -75,3 +75,20 @@ export interface PlanningChecklist {
   emergencyFund: boolean;
   withdrawalStrategy: boolean;
 }
+
+// Benchmark comparison types
+export interface BenchmarkData {
+  key: string;
+  name: string;
+  description: string;
+  expectedReturn: number;
+  volatility: number;
+  sharpeRatio: number;
+  expenseRatio: number;
+  growthProjections: { year: number; value: number }[];
+}
+
+export interface PortfolioVsBenchmarks {
+  portfolio: BenchmarkData;
+  benchmarks: BenchmarkData[];
+}

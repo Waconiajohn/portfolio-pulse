@@ -48,6 +48,36 @@ export const CRISIS_SCENARIOS = {
   covidCrash2020: { equity: -0.34, bonds: 0.02, name: '2020 Covid Shock' },
 };
 
+// Benchmark definitions for portfolio comparison
+export const BENCHMARKS = {
+  sp500: {
+    name: 'S&P 500',
+    description: '100% US Large Cap',
+    allocation: { 'US Stocks': 1.0 },
+    expectedReturn: 0.09,
+    volatility: 0.165,
+    expenseRatio: 0.0003,
+  },
+  balanced60_40: {
+    name: '60/40 Portfolio',
+    description: '60% Stocks, 40% Bonds',
+    allocation: { 'US Stocks': 0.60, 'Bonds': 0.40 },
+    expectedReturn: 0.068,
+    volatility: 0.10,
+    expenseRatio: 0.0005,
+  },
+  totalWorld: {
+    name: 'Total World',
+    description: '60% US, 40% Intl Stocks',
+    allocation: { 'US Stocks': 0.60, 'Intl Stocks': 0.40 },
+    expectedReturn: 0.085,
+    volatility: 0.175,
+    expenseRatio: 0.0007,
+  },
+} as const;
+
+export type BenchmarkKey = keyof typeof BENCHMARKS;
+
 // Sector mapping for common tickers (simplified)
 export const SECTOR_MAPPING: Record<string, string> = {
   'AAPL': 'Technology',

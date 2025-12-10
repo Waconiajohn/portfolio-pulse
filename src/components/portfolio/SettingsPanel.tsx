@@ -137,6 +137,17 @@ export function SettingsPanel({
           </DialogTitle>
         </DialogHeader>
 
+        {/* Explanatory Note */}
+        <div className="p-3 rounded-lg bg-primary/10 border border-primary/20 text-sm">
+          <div className="flex items-start gap-2">
+            <Info size={16} className="text-primary mt-0.5 shrink-0" />
+            <div>
+              <span className="font-medium">Note:</span> Some benchmarks are <span className="text-primary font-medium">🔗 risk-linked</span> (e.g., target volatility varies by Conservative/Moderate/Aggressive profile). 
+              Others are <span className="font-medium">📌 absolute</span> (e.g., single position concentration {'>'}10% is always flagged regardless of risk profile).
+            </div>
+          </div>
+        </div>
+
         <Tabs defaultValue="advice" className="mt-4">
           <TabsList className="grid w-full grid-cols-5">
             <TabsTrigger value="advice">Advice Model</TabsTrigger>

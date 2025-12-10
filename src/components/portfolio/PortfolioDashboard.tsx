@@ -144,11 +144,14 @@ export function PortfolioDashboard() {
           </TabsList>
 
           <TabsContent value="dashboard" className="space-y-6">
-            {selectedCategory ? (
+                {selectedCategory ? (
               <DetailView
                 name={DIAGNOSTIC_CATEGORIES[selectedCategory as keyof typeof DIAGNOSTIC_CATEGORIES].name}
+                categoryKey={selectedCategory}
                 result={analysis.diagnostics[selectedCategory as keyof typeof analysis.diagnostics]}
                 onClose={() => setSelectedCategory(null)}
+                scoringConfig={scoringConfig}
+                riskTolerance={clientInfo.riskTolerance}
               />
             ) : (
               <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
@@ -163,6 +166,8 @@ export function PortfolioDashboard() {
                         categoryKey={key}
                         result={analysis.diagnostics[key as keyof typeof analysis.diagnostics]}
                         onViewDetails={() => setSelectedCategory(key)}
+                        scoringConfig={scoringConfig}
+                        riskTolerance={clientInfo.riskTolerance}
                       />
                     ))}
                   </div>

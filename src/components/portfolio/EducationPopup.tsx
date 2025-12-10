@@ -5,15 +5,29 @@ import {
   PopoverTrigger,
 } from '@/components/ui/popover';
 import { Button } from '@/components/ui/button';
-import { EducationContent, EDUCATION_CONTENT } from '@/lib/scoring-config';
+import { 
+  EducationContent, 
+  ScoringConfig, 
+  DEFAULT_SCORING_CONFIG, 
+  getEducationContent 
+} from '@/lib/scoring-config';
+import { RiskTolerance } from '@/types/portfolio';
 
 interface EducationPopupProps {
   categoryKey: string;
   className?: string;
+  scoringConfig?: ScoringConfig;
+  riskTolerance?: RiskTolerance;
 }
 
-export function EducationPopup({ categoryKey, className }: EducationPopupProps) {
-  const content: EducationContent | undefined = EDUCATION_CONTENT[categoryKey];
+export function EducationPopup({ 
+  categoryKey, 
+  className,
+  scoringConfig = DEFAULT_SCORING_CONFIG,
+  riskTolerance = 'Moderate'
+}: EducationPopupProps) {
+  const educationContent = getEducationContent(scoringConfig, riskTolerance);
+  const content: EducationContent | undefined = educationContent[categoryKey];
 
   if (!content) return null;
 
@@ -45,13 +59,20 @@ export function EducationPopup({ categoryKey, className }: EducationPopupProps) 
           
           <div>
             <span className="font-medium text-muted-foreground">Good vs Bad:</span>
-            <p className="text-foreground mt-0.5">{content.goodVsBad}</p>
+            <p className="text-foreground mt-0.5 whitespace-pre-line">{content.goodVsBad}</p>
           </div>
           
           <div>
             <span className="font-medium text-muted-foreground">Interpretation:</span>
             <p className="text-foreground mt-0.5">{content.interpretation}</p>
           </div>
+
+          {content.riskToleranceNote && (
+            <div className="pt-2 border-t border-border">
+              <span className="font-medium text-primary">Your Profile:</span>
+              <p className="text-foreground mt-0.5">{content.riskToleranceNote}</p>
+            </div>
+          )}
         </div>
       </PopoverContent>
     </Popover>

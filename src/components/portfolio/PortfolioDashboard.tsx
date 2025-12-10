@@ -2,17 +2,21 @@ import { useState, useMemo, useCallback } from 'react';
 import { Holding, ClientInfo, PlanningChecklist, PortfolioAnalysis } from '@/types/portfolio';
 import { analyzePortfolio } from '@/lib/analysis-engine';
 import { DIAGNOSTIC_CATEGORIES } from '@/lib/constants';
+import { PortfolioAssumptions, DEFAULT_ASSUMPTIONS, saveAssumptions, loadAssumptions } from '@/lib/assumptions';
+import { SAMPLE_HOLDINGS } from '@/lib/sample-data';
 import { Header } from './Header';
 import { HoldingsTable } from './HoldingsTable';
 import { DiagnosticCard } from './DiagnosticCard';
 import { RecommendationsPanel } from './RecommendationsPanel';
 import { DetailView } from './DetailView';
 import { PlanningChecklistCard } from './PlanningChecklist';
+import { EfficientFrontierChart } from './EfficientFrontierChart';
+import { StressTestChart } from './StressTestChart';
+import { AssetAllocationChart } from './AssetAllocationChart';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Textarea } from '@/components/ui/textarea';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { LayoutGrid, Table, FileText } from 'lucide-react';
+import { LayoutGrid, Table, FileText, LineChart } from 'lucide-react';
 import { toast } from 'sonner';
 
 const initialClientInfo: ClientInfo = {
@@ -38,48 +42,35 @@ export function PortfolioDashboard() {
   const [notes, setNotes] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState('dashboard');
+  const [assumptions, setAssumptions] = useState<PortfolioAssumptions>(() => loadAssumptions());
 
   const analysis: PortfolioAnalysis = useMemo(() => {
     return analyzePortfolio(holdings, clientInfo, checklist);
   }, [holdings, clientInfo, checklist]);
 
-  const handleExport = useCallback(() => {
-    // Create a simple export for now
-    const content = `
-PORTFOLIO DIAGNOSTIC REPORT
-===========================
-Client: ${clientInfo.name || 'N/A'}
-Date: ${clientInfo.meetingDate}
-Risk Tolerance: ${clientInfo.riskTolerance}
+  const handleAssumptionsChange = useCallback((newAssumptions: PortfolioAssumptions) => {
+    setAssumptions(newAssumptions);
+    saveAssumptions(newAssumptions);
+  }, []);
 
-SUMMARY
--------
-Health Score: ${analysis.healthScore}/100
-Portfolio Value: $${analysis.totalValue.toLocaleString()}
-Expected Return: ${(analysis.expectedReturn * 100).toFixed(1)}%
-Volatility: ${(analysis.volatility * 100).toFixed(1)}%
-Sharpe Ratio: ${analysis.sharpeRatio.toFixed(2)}
-Annual Fees: $${analysis.totalFees.toLocaleString()}
-
-RECOMMENDATIONS
----------------
-${analysis.recommendations.map((r, i) => `${i + 1}. ${r.title}\n   ${r.description}\n   Impact: ${r.impact}`).join('\n\n')}
-
-NOTES
------
-${notes || 'No additional notes.'}
-    `.trim();
-
-    const blob = new Blob([content], { type: 'text/plain' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `portfolio-diagnostic-${clientInfo.name || 'report'}-${clientInfo.meetingDate}.txt`;
-    a.click();
-    URL.revokeObjectURL(url);
-    
-    toast.success('Report exported successfully');
-  }, [clientInfo, analysis, notes]);
+  const handleLoadSample = useCallback(() => {
+    setHoldings(SAMPLE_HOLDINGS);
+    setClientInfo({
+      name: 'John & Sarah Smith',
+      meetingDate: new Date().toISOString().split('T')[0],
+      riskTolerance: 'Moderate',
+    });
+    setChecklist({
+      willTrust: true,
+      beneficiaryReview: true,
+      poaDirectives: true,
+      digitalAssetPlan: false,
+      insuranceCoverage: true,
+      emergencyFund: true,
+      withdrawalStrategy: false,
+    });
+    toast.success('Sample portfolio loaded');
+  }, []);
 
   const diagnosticEntries = Object.entries(DIAGNOSTIC_CATEGORIES) as Array<[keyof typeof DIAGNOSTIC_CATEGORIES, typeof DIAGNOSTIC_CATEGORIES[keyof typeof DIAGNOSTIC_CATEGORIES]]>;
 
@@ -88,8 +79,12 @@ ${notes || 'No additional notes.'}
       <Header
         clientInfo={clientInfo}
         analysis={analysis}
+        holdings={holdings}
+        notes={notes}
+        assumptions={assumptions}
         onClientInfoChange={setClientInfo}
-        onExport={handleExport}
+        onAssumptionsChange={handleAssumptionsChange}
+        onLoadSample={handleLoadSample}
       />
 
       <main className="container mx-auto px-4 py-6">
@@ -102,6 +97,10 @@ ${notes || 'No additional notes.'}
             <TabsTrigger value="holdings" className="gap-2">
               <Table size={14} />
               Holdings
+            </TabsTrigger>
+            <TabsTrigger value="charts" className="gap-2">
+              <LineChart size={14} />
+              Analytics
             </TabsTrigger>
             <TabsTrigger value="notes" className="gap-2">
               <FileText size={14} />
@@ -157,6 +156,55 @@ ${notes || 'No additional notes.'}
                 <HoldingsTable holdings={holdings} onUpdate={setHoldings} />
               </CardContent>
             </Card>
+          </TabsContent>
+
+          <TabsContent value="charts" className="space-y-6">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <EfficientFrontierChart analysis={analysis} holdings={holdings} />
+              <StressTestChart analysis={analysis} />
+            </div>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <AssetAllocationChart holdings={holdings} totalValue={analysis.totalValue} />
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-base">Performance Metrics</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="p-4 rounded-lg bg-muted/30 border border-border">
+                      <div className="text-xs text-muted-foreground uppercase tracking-wider">Sharpe Ratio</div>
+                      <div className="font-mono text-2xl font-semibold mt-1">{analysis.sharpeRatio.toFixed(2)}</div>
+                      <div className="text-xs text-muted-foreground mt-1">Benchmark: 0.50</div>
+                    </div>
+                    <div className="p-4 rounded-lg bg-muted/30 border border-border">
+                      <div className="text-xs text-muted-foreground uppercase tracking-wider">Expected Return</div>
+                      <div className="font-mono text-2xl font-semibold mt-1 value-positive">{(analysis.expectedReturn * 100).toFixed(1)}%</div>
+                      <div className="text-xs text-muted-foreground mt-1">Annualized</div>
+                    </div>
+                    <div className="p-4 rounded-lg bg-muted/30 border border-border">
+                      <div className="text-xs text-muted-foreground uppercase tracking-wider">Volatility</div>
+                      <div className="font-mono text-2xl font-semibold mt-1">{(analysis.volatility * 100).toFixed(1)}%</div>
+                      <div className="text-xs text-muted-foreground mt-1">Standard Deviation</div>
+                    </div>
+                    <div className="p-4 rounded-lg bg-muted/30 border border-border">
+                      <div className="text-xs text-muted-foreground uppercase tracking-wider">Fee Drag</div>
+                      <div className="font-mono text-2xl font-semibold mt-1 value-negative">
+                        {((analysis.totalFees / (analysis.totalValue || 1)) * 100).toFixed(2)}%
+                      </div>
+                      <div className="text-xs text-muted-foreground mt-1">Annual cost</div>
+                    </div>
+                  </div>
+                  <div className="p-4 rounded-lg bg-primary/10 border border-primary/20">
+                    <div className="text-sm font-medium">Optimization Potential</div>
+                    <div className="text-xs text-muted-foreground mt-1">
+                      Based on current analysis, the portfolio could potentially improve Sharpe ratio by 
+                      <span className="font-mono font-medium text-status-good"> +{((analysis.sharpeRatio * 0.15)).toFixed(2)}</span> through 
+                      rebalancing and fee optimization.
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
           </TabsContent>
 
           <TabsContent value="notes">

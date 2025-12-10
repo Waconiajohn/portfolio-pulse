@@ -631,16 +631,28 @@ function analyzeProtection(
 // ============================================================================
 // 7. RISK-ADJUSTED PERFORMANCE (GOAL PROBABILITY)
 // ============================================================================
+interface LifetimeIncomeAnalysisData {
+  coreCoveragePct: number;
+  discretionaryMonthly: number;
+  healthcareMonthly: number;
+  guaranteedIncomeMonthly: number;
+}
+
 function analyzeRiskAdjusted(
   holdings: Holding[], 
   clientInfo: ClientInfo, 
   totalValue: number, 
   expectedReturn: number, 
   volatility: number,
-  config: ScoringConfig
+  config: ScoringConfig,
+  lifetimeIncomeData?: LifetimeIncomeAnalysisData
 ): DiagnosticResult {
   const sortinoRatio = volatility > 0 ? (expectedReturn - RISK_FREE_RATE) / (volatility * 0.7) : 0;
   const maxDrawdown = volatility * 2.5;
+  
+  // Check if core expenses are secured by lifetime income
+  const coreSecured = lifetimeIncomeData && lifetimeIncomeData.coreCoveragePct >= 1.0;
+  const partiallyCovered = lifetimeIncomeData && lifetimeIncomeData.coreCoveragePct >= 0.5 && lifetimeIncomeData.coreCoveragePct < 1.0;
   
   // Monte Carlo-lite probability
   let probability = 50;
@@ -662,6 +674,13 @@ function analyzeRiskAdjusted(
   }
   score = Math.min(100, Math.max(0, score));
 
+  // Boost score if core expenses are secured
+  if (coreSecured) {
+    score = Math.min(100, score + 15);
+  } else if (partiallyCovered) {
+    score = Math.min(100, score + 5);
+  }
+
   if (maxDrawdown > 0.4) score -= 20;
   score = Math.max(0, score);
 
@@ -673,21 +692,45 @@ function analyzeRiskAdjusted(
   else if (probability >= config.goalProbability.yellowMin) bandLabel = 'Borderline';
   else bandLabel = 'At Risk';
 
-  // Consistent key finding
+  // Reframed key finding when core is secured
   let keyFinding: string;
-  if (probability >= config.goalProbability.greenMin) {
-    keyFinding = `${probability.toFixed(0)}% probability of reaching goal – comfortable margin`;
-  } else if (probability >= config.goalProbability.yellowMin) {
-    keyFinding = `${probability.toFixed(0)}% probability of reaching goal is BORDERLINE – may require adjustments`;
+  let goalType: 'full' | 'discretionary-only' = 'full';
+  let incomeSecurityNote: string | undefined;
+
+  if (coreSecured) {
+    goalType = 'discretionary-only';
+    keyFinding = `Essential expenses secured by lifetime income. ${probability.toFixed(0)}% probability for discretionary & legacy goals`;
+    incomeSecurityNote = 'Your basic lifestyle is guaranteed regardless of market performance';
+  } else if (partiallyCovered && lifetimeIncomeData) {
+    const monthlyGap = (1 - lifetimeIncomeData.coreCoveragePct) * (lifetimeIncomeData.discretionaryMonthly + lifetimeIncomeData.healthcareMonthly + lifetimeIncomeData.guaranteedIncomeMonthly / lifetimeIncomeData.coreCoveragePct);
+    incomeSecurityNote = `Portfolio must generate ~$${Math.round(monthlyGap).toLocaleString()}/mo to cover remaining core expenses`;
+    if (probability >= config.goalProbability.greenMin) {
+      keyFinding = `${probability.toFixed(0)}% probability of reaching goal – comfortable margin`;
+    } else if (probability >= config.goalProbability.yellowMin) {
+      keyFinding = `${probability.toFixed(0)}% probability of reaching goal is BORDERLINE – may require adjustments`;
+    } else {
+      keyFinding = `${probability.toFixed(0)}% probability of reaching goal is LOW – plan changes likely needed`;
+    }
   } else {
-    keyFinding = `${probability.toFixed(0)}% probability of reaching goal is LOW – plan changes likely needed`;
+    incomeSecurityNote = lifetimeIncomeData && lifetimeIncomeData.coreCoveragePct > 0 
+      ? 'Full lifestyle risk depends on portfolio performance'
+      : undefined;
+    if (probability >= config.goalProbability.greenMin) {
+      keyFinding = `${probability.toFixed(0)}% probability of reaching goal – comfortable margin`;
+    } else if (probability >= config.goalProbability.yellowMin) {
+      keyFinding = `${probability.toFixed(0)}% probability of reaching goal is BORDERLINE – may require adjustments`;
+    } else {
+      keyFinding = `${probability.toFixed(0)}% probability of reaching goal is LOW – plan changes likely needed`;
+    }
   }
 
   return {
     status,
     score,
     keyFinding,
-    headlineMetric: `Goal probability: ${probability.toFixed(0)}% (${bandLabel})`,
+    headlineMetric: coreSecured 
+      ? `Discretionary goal: ${probability.toFixed(0)}% (Core Secured)`
+      : `Goal probability: ${probability.toFixed(0)}% (${bandLabel})`,
     details: { 
       sortinoRatio, 
       maxDrawdown, 
@@ -695,6 +738,10 @@ function analyzeRiskAdjusted(
       bandLabel,
       greenMin: config.goalProbability.greenMin,
       yellowMin: config.goalProbability.yellowMin,
+      incomeSecured: coreSecured,
+      goalType,
+      incomeSecurityNote,
+      coreCoveragePct: lifetimeIncomeData?.coreCoveragePct,
     },
   };
 }
@@ -1179,6 +1226,18 @@ export function analyzePortfolio(
     };
   }
 
+  // Calculate lifetime income data for goal analysis integration
+  const lifetimeIncomeResult = analyzeLifetimeIncomeSecurity(lifetimeIncomeInputs, config);
+  const lifetimeIncomeAnalysisData: LifetimeIncomeAnalysisData | undefined = 
+    lifetimeIncomeInputs.coreLivingExpensesMonthly > 0 || lifetimeIncomeInputs.guaranteedSources.length > 0
+      ? {
+          coreCoveragePct: (lifetimeIncomeResult.details.coreCoveragePct as number) || 0,
+          discretionaryMonthly: lifetimeIncomeInputs.discretionaryExpensesMonthly,
+          healthcareMonthly: lifetimeIncomeInputs.healthcareLongTermCareMonthly,
+          guaranteedIncomeMonthly: (lifetimeIncomeResult.details.guaranteedLifetimeIncomeMonthly as number) || 0,
+        }
+      : undefined;
+
   const diagnostics = {
     riskManagement: analyzeRiskManagement(holdings, clientInfo, metrics.totalValue, metrics.volatility, config),
     protection: analyzeProtection(holdings, metrics.totalValue, config),
@@ -1186,11 +1245,11 @@ export function analyzePortfolio(
     costAnalysis: analyzeCosts(holdings, metrics.totalValue, metrics.totalFees, adviceModel, advisorFee, config),
     taxEfficiency: analyzeTaxEfficiency(holdings, metrics.totalValue, config),
     diversification: analyzeDiversification(holdings, metrics.totalValue, config),
-    riskAdjusted: analyzeRiskAdjusted(holdings, clientInfo, metrics.totalValue, metrics.expectedReturn, metrics.volatility, config),
+    riskAdjusted: analyzeRiskAdjusted(holdings, clientInfo, metrics.totalValue, metrics.expectedReturn, metrics.volatility, config, lifetimeIncomeAnalysisData),
     crisisResilience: analyzeCrisisResilience(holdings, metrics.totalValue, config),
     optimization: analyzeOptimization(metrics.expectedReturn, metrics.volatility, metrics.sharpeRatio, metrics.totalFees, metrics.totalValue, config),
     planningGaps: analyzePlanningGaps(planningChecklist, config),
-    lifetimeIncomeSecurity: analyzeLifetimeIncomeSecurity(lifetimeIncomeInputs, config),
+    lifetimeIncomeSecurity: lifetimeIncomeResult,
   };
 
   // Calculate overall health score

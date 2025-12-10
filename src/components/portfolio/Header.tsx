@@ -123,6 +123,20 @@ export function Header({
               className="h-9"
             />
           </div>
+          <div className="w-20">
+            <label className="text-xs text-muted-foreground uppercase tracking-wider mb-1 block">
+              Age
+            </label>
+            <Input
+              type="number"
+              value={clientInfo.currentAge || ''}
+              onChange={(e) => onClientInfoChange({ ...clientInfo, currentAge: e.target.value ? parseInt(e.target.value) : undefined })}
+              placeholder="62"
+              className="h-9 font-mono"
+              min={18}
+              max={100}
+            />
+          </div>
           <div className="w-40">
             <label className="text-xs text-muted-foreground uppercase tracking-wider mb-1 block">
               Meeting Date
@@ -148,7 +162,7 @@ export function Header({
               <SelectContent>
                 {RISK_OPTIONS.map(opt => (
                   <SelectItem key={opt} value={opt}>{opt}</SelectItem>
-                ))}
+              ))}
               </SelectContent>
             </Select>
           </div>

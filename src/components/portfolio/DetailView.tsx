@@ -2,8 +2,8 @@ import { DiagnosticResult, RiskTolerance, PlanningChecklist, GuaranteedIncomeSou
 import { StatusBadge } from './StatusBadge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { X, Check, AlertCircle, Info } from 'lucide-react';
-import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
+import { X, Check, AlertCircle, Info, TrendingUp } from 'lucide-react';
+import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, AreaChart, Area, ReferenceLine, Legend } from 'recharts';
 import { ScoringConfig, DEFAULT_SCORING_CONFIG, getEducationContent } from '@/lib/scoring-config';
 import { Badge } from '@/components/ui/badge';
 
@@ -14,6 +14,7 @@ interface DetailViewProps {
   onClose: () => void;
   scoringConfig?: ScoringConfig;
   riskTolerance?: RiskTolerance;
+  clientAge?: number;
 }
 
 const CHART_COLORS = [
@@ -31,7 +32,8 @@ export function DetailView({
   result, 
   onClose,
   scoringConfig = DEFAULT_SCORING_CONFIG,
-  riskTolerance = 'Moderate'
+  riskTolerance = 'Moderate',
+  clientAge = 62
 }: DetailViewProps) {
   const { details } = result;
   const educationContent = getEducationContent(scoringConfig, riskTolerance);
@@ -493,6 +495,132 @@ export function DetailView({
           </div>
         )}
 
+        {/* Income Timeline Chart */}
+        {sources.length > 0 && clientAge && (
+          (() => {
+            // Generate timeline data from current age to 95
+            const endAge = 95;
+            const timelineData = [];
+            
+            for (let age = clientAge; age <= endAge; age++) {
+              const activeSources = sources.filter(s => age >= s.startAge);
+              const incomeAtAge = activeSources.reduce((sum, s) => sum + s.monthlyAmount, 0);
+              
+              timelineData.push({
+                age,
+                income: incomeAtAge,
+                coreExpenses: coreExpenses,
+                totalExpenses: totalExpenses,
+                coverage: coreExpenses > 0 ? (incomeAtAge / coreExpenses) * 100 : 0,
+                activeSources: activeSources.map(s => s.sourceName || SOURCE_TYPE_LABELS[s.sourceType]).join(', '),
+              });
+            }
+
+            // Find key milestone ages
+            const milestones = sources
+              .filter(s => s.startAge > clientAge)
+              .map(s => ({ age: s.startAge, name: s.sourceName || SOURCE_TYPE_LABELS[s.sourceType] }))
+              .sort((a, b) => a.age - b.age);
+
+            // Find age when coverage crosses 100%
+            const fullCoverageAge = timelineData.find(d => d.coverage >= 100)?.age;
+
+            return (
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <h5 className="text-sm font-medium">Income Activation Timeline</h5>
+                  {fullCoverageAge && (
+                    <Badge variant="outline" className="text-xs bg-status-good/10 text-status-good border-status-good/30">
+                      Core covered at age {fullCoverageAge}
+                    </Badge>
+                  )}
+                </div>
+                <div className="h-64">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <AreaChart data={timelineData} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
+                      <defs>
+                        <linearGradient id="incomeGradient" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%" stopColor="hsl(142, 76%, 46%)" stopOpacity={0.4}/>
+                          <stop offset="95%" stopColor="hsl(142, 76%, 46%)" stopOpacity={0.1}/>
+                        </linearGradient>
+                      </defs>
+                      <XAxis 
+                        dataKey="age" 
+                        tick={{ fill: 'hsl(215, 20%, 55%)', fontSize: 11 }}
+                        tickFormatter={(age) => `${age}`}
+                      />
+                      <YAxis 
+                        tick={{ fill: 'hsl(215, 20%, 55%)', fontSize: 11 }}
+                        tickFormatter={(value) => `$${(value / 1000).toFixed(0)}k`}
+                      />
+                      <Tooltip
+                        contentStyle={{ 
+                          backgroundColor: 'hsl(222, 47%, 10%)', 
+                          border: '1px solid hsl(217, 33%, 17%)',
+                          borderRadius: '8px',
+                        }}
+                        formatter={(value: number, name: string) => [
+                          `$${value.toLocaleString()}/mo`,
+                          name === 'income' ? 'Guaranteed Income' : name === 'coreExpenses' ? 'Core Expenses' : 'Total Expenses'
+                        ]}
+                        labelFormatter={(age) => `Age ${age}`}
+                      />
+                      <Legend 
+                        formatter={(value) => 
+                          value === 'income' ? 'Guaranteed Income' : 
+                          value === 'coreExpenses' ? 'Core Expenses' : 'Total Expenses'
+                        }
+                      />
+                      <Area 
+                        type="stepAfter" 
+                        dataKey="income" 
+                        stroke="hsl(142, 76%, 46%)" 
+                        fill="url(#incomeGradient)"
+                        strokeWidth={2}
+                      />
+                      <ReferenceLine 
+                        y={coreExpenses} 
+                        stroke="hsl(45, 93%, 47%)" 
+                        strokeDasharray="5 5"
+                        strokeWidth={2}
+                      />
+                      <ReferenceLine 
+                        y={totalExpenses} 
+                        stroke="hsl(0, 84%, 60%)" 
+                        strokeDasharray="3 3"
+                        strokeWidth={1}
+                      />
+                      {milestones.map((m, i) => (
+                        <ReferenceLine 
+                          key={i}
+                          x={m.age} 
+                          stroke="hsl(217, 91%, 60%)" 
+                          strokeDasharray="3 3"
+                          label={{ value: m.name, position: 'top', fill: 'hsl(217, 91%, 60%)', fontSize: 10 }}
+                        />
+                      ))}
+                    </AreaChart>
+                  </ResponsiveContainer>
+                </div>
+                <div className="flex flex-wrap gap-3 text-xs">
+                  <div className="flex items-center gap-1">
+                    <div className="w-3 h-3 rounded" style={{ backgroundColor: 'hsl(142, 76%, 46%)' }} />
+                    <span className="text-muted-foreground">Guaranteed Income</span>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <div className="w-3 h-0.5" style={{ backgroundColor: 'hsl(45, 93%, 47%)' }} />
+                    <span className="text-muted-foreground">Core Expenses (${coreExpenses.toLocaleString()}/mo)</span>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <div className="w-3 h-0.5" style={{ backgroundColor: 'hsl(0, 84%, 60%)' }} />
+                    <span className="text-muted-foreground">Total Expenses (${totalExpenses.toLocaleString()}/mo)</span>
+                  </div>
+                </div>
+              </div>
+            );
+          })()
+        )}
+
         {/* Income Sources Table */}
         {sources.length > 0 && (
           <div className="space-y-2">
@@ -503,6 +631,7 @@ export function DetailView({
                   <div className="flex items-center gap-2">
                     <span className="font-medium">{source.sourceName || SOURCE_TYPE_LABELS[source.sourceType]}</span>
                     <Badge variant="outline" className="text-xs">{SOURCE_TYPE_LABELS[source.sourceType]}</Badge>
+                    <Badge variant="outline" className="text-xs">Starts age {source.startAge}</Badge>
                   </div>
                   <div className="flex items-center gap-3">
                     <span className="font-mono">${source.monthlyAmount.toLocaleString()}/mo</span>
@@ -537,6 +666,48 @@ export function DetailView({
             </div>
           </div>
         )}
+      </div>
+    );
+  };
+
+  // Render income security callout for Risk-Adjusted detail view
+  const renderIncomeSecurityCallout = () => {
+    if (categoryKey !== 'riskAdjusted') return null;
+    const incomeSecured = details.incomeSecured as boolean;
+    const incomeSecurityNote = details.incomeSecurityNote as string;
+    const goalType = details.goalType as 'full' | 'discretionary-only';
+    
+    if (!incomeSecured && !incomeSecurityNote) return null;
+
+    return (
+      <div className={`p-3 rounded-lg border col-span-2 ${
+        incomeSecured 
+          ? 'bg-status-good/10 border-status-good/20' 
+          : 'bg-primary/5 border-primary/20'
+      }`}>
+        <div className="flex items-start gap-2">
+          {incomeSecured ? (
+            <Check size={16} className="text-status-good mt-0.5 shrink-0" />
+          ) : (
+            <TrendingUp size={16} className="text-primary mt-0.5 shrink-0" />
+          )}
+          <div className="text-sm">
+            {incomeSecured ? (
+              <>
+                <span className="font-medium text-status-good">Lifestyle Floor Guaranteed:</span>{' '}
+                <span className="text-muted-foreground">
+                  Goal probability reflects discretionary and legacy goals only. Your essential living expenses 
+                  are already secured by guaranteed lifetime income, regardless of market performance.
+                </span>
+              </>
+            ) : (
+              <>
+                <span className="font-medium text-primary">Income Note:</span>{' '}
+                <span className="text-muted-foreground">{incomeSecurityNote}</span>
+              </>
+            )}
+          </div>
+        </div>
       </div>
     );
   };
@@ -581,6 +752,7 @@ export function DetailView({
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {renderIncomeSecurityCallout()}
           {renderSectorChart()}
           {renderTopPositions()}
           {renderFeeBreakdown()}

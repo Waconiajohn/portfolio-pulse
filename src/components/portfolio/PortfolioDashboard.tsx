@@ -109,6 +109,7 @@ export function PortfolioDashboard() {
       riskTolerance: 'Moderate',
       targetAmount: 2000000,
       yearsToGoal: 15,
+      currentAge: 62,
     });
     setChecklist({
       willTrust: true,
@@ -207,6 +208,7 @@ export function PortfolioDashboard() {
                 onClose={() => setSelectedCategory(null)}
                 scoringConfig={scoringConfig}
                 riskTolerance={clientInfo.riskTolerance}
+                clientAge={clientInfo.currentAge}
               />
             ) : (
               <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">

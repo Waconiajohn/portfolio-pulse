@@ -119,6 +119,40 @@ export function PortfolioDashboard() {
       emergencyFund: true,
       withdrawalStrategy: false,
     });
+    setLifetimeIncomeInputs({
+      coreLivingExpensesMonthly: 6500,
+      discretionaryExpensesMonthly: 2500,
+      healthcareLongTermCareMonthly: 1200,
+      guaranteedSources: [
+        {
+          id: crypto.randomUUID(),
+          sourceName: 'John Social Security',
+          sourceType: 'social-security-client',
+          monthlyAmount: 3200,
+          startAge: 67,
+          inflationAdj: true,
+          guaranteedForLife: true,
+        },
+        {
+          id: crypto.randomUUID(),
+          sourceName: 'Sarah Social Security',
+          sourceType: 'social-security-spouse',
+          monthlyAmount: 1800,
+          startAge: 67,
+          inflationAdj: true,
+          guaranteedForLife: true,
+        },
+        {
+          id: crypto.randomUUID(),
+          sourceName: 'ABC Corp Pension',
+          sourceType: 'pension-client',
+          monthlyAmount: 2100,
+          startAge: 65,
+          inflationAdj: false,
+          guaranteedForLife: true,
+        },
+      ],
+    });
     toast.success('Sample portfolio loaded');
   }, []);
 

@@ -24,6 +24,7 @@ export interface ClientInfo {
   riskTolerance: RiskTolerance;
   targetAmount?: number;
   yearsToGoal?: number;
+  currentAge?: number;
 }
 
 export interface DiagnosticResult {

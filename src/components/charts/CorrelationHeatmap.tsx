@@ -1,5 +1,8 @@
 import { useMemo } from 'react';
-import Plot from 'react-plotly.js';
+import createPlotlyComponent from 'react-plotly.js/factory';
+import Plotly from 'plotly.js-dist-min';
+
+const Plot = createPlotlyComponent(Plotly);
 import { CorrelationMatrixResult } from '@/lib/correlation';
 import { CORRELATION_COLORSCALE, getHeatmapLayout, getDefaultConfig } from '@/lib/plotly-config';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';

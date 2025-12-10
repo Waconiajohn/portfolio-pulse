@@ -17,13 +17,27 @@ import {
   CRISIS_SCENARIOS,
   SECTOR_MAPPING,
 } from './constants';
+import { ScoringConfig, DEFAULT_SCORING_CONFIG, AdviceModel } from './scoring-config';
 
-function getStatus(score: number): DiagnosticStatus {
-  if (score >= 70) return 'GREEN';
-  if (score >= 40) return 'YELLOW';
+// ============================================================================
+// HELPER: Get status from score using config thresholds
+// ============================================================================
+function getStatus(score: number, config: ScoringConfig = DEFAULT_SCORING_CONFIG): DiagnosticStatus {
+  if (score >= config.statusThresholds.greenMin) return 'GREEN';
+  if (score >= config.statusThresholds.yellowMin) return 'YELLOW';
   return 'RED';
 }
 
+// ============================================================================
+// HELPER: Format percentage
+// ============================================================================
+function formatPct(value: number, decimals: number = 1): string {
+  return (value * 100).toFixed(decimals);
+}
+
+// ============================================================================
+// CORE PORTFOLIO METRICS
+// ============================================================================
 function calculatePortfolioMetrics(holdings: Holding[]) {
   const totalValue = holdings.reduce((sum, h) => sum + h.shares * h.currentPrice, 0);
   const totalCost = holdings.reduce((sum, h) => sum + h.shares * h.costBasis, 0);
@@ -32,7 +46,6 @@ function calculatePortfolioMetrics(holdings: Holding[]) {
     return { totalValue: 0, totalCost: 0, expectedReturn: 0, volatility: 0, sharpeRatio: 0, totalFees: 0 };
   }
 
-  // Calculate weighted returns and volatility
   let weightedReturn = 0;
   let weightedVolatility = 0;
   let totalFees = 0;
@@ -45,7 +58,7 @@ function calculatePortfolioMetrics(holdings: Holding[]) {
     const expenseRatio = h.expenseRatio ?? DEFAULT_EXPENSE_RATIOS.etf;
 
     weightedReturn += weight * assetReturn;
-    weightedVolatility += weight * assetVol; // Simplified - not accounting for correlations
+    weightedVolatility += weight * assetVol;
     totalFees += value * expenseRatio;
   });
 
@@ -63,7 +76,16 @@ function calculatePortfolioMetrics(holdings: Holding[]) {
   };
 }
 
-function analyzeRiskManagement(holdings: Holding[], clientInfo: ClientInfo, totalValue: number, volatility: number): DiagnosticResult {
+// ============================================================================
+// 1. RISK MANAGEMENT
+// ============================================================================
+function analyzeRiskManagement(
+  holdings: Holding[], 
+  clientInfo: ClientInfo, 
+  totalValue: number, 
+  volatility: number,
+  config: ScoringConfig
+): DiagnosticResult {
   const targetVol = TARGET_VOLATILITY[clientInfo.riskTolerance];
   const riskGap = Math.abs(volatility - targetVol) / targetVol;
   
@@ -74,7 +96,8 @@ function analyzeRiskManagement(holdings: Holding[], clientInfo: ClientInfo, tota
   })).sort((a, b) => b.weight - a.weight);
   
   const topPosition = positions[0]?.weight || 0;
-  const hasConcentration = topPosition > 0.1;
+  const maxPosPct = config.riskManagement.maxSinglePositionPct;
+  const hasConcentration = topPosition > maxPosPct;
 
   // Sector concentration
   const sectorWeights: Record<string, number> = {};
@@ -84,41 +107,69 @@ function analyzeRiskManagement(holdings: Holding[], clientInfo: ClientInfo, tota
     sectorWeights[sector] = (sectorWeights[sector] || 0) + weight;
   });
   const topSector = Math.max(...Object.values(sectorWeights), 0);
-  const hasSectorConcentration = topSector > 0.3;
+  const hasSectorConcentration = topSector > config.riskManagement.maxSectorPct;
 
+  // Scoring
   let score = 100;
-  if (riskGap > 0.15) score -= 40;
-  else if (riskGap > 0.05) score -= 20;
+  if (riskGap > config.riskManagement.riskGapSevereThreshold) score -= 40;
+  else if (riskGap > config.riskManagement.riskGapWarningThreshold) score -= 20;
   if (hasConcentration) score -= 25;
   if (hasSectorConcentration) score -= 15;
 
-  const gapPercent = ((volatility - targetVol) * 100).toFixed(1);
-  const direction = volatility > targetVol ? 'above' : 'below';
+  const status = getStatus(score, config);
+
+  // Build key finding - must be consistent with status
+  let keyFinding: string;
+  if (hasConcentration) {
+    keyFinding = `Top position (${positions[0]?.ticker}) is ${formatPct(topPosition)}% of portfolio, WELL ABOVE the ${formatPct(maxPosPct, 0)}% concentration guideline`;
+  } else if (hasSectorConcentration) {
+    keyFinding = `Top sector concentration is ${formatPct(topSector)}%, exceeding ${formatPct(config.riskManagement.maxSectorPct, 0)}% guideline`;
+  } else if (riskGap > config.riskManagement.riskGapSevereThreshold) {
+    const direction = volatility > targetVol ? 'higher' : 'lower';
+    keyFinding = `Portfolio volatility is significantly ${direction} than your ${clientInfo.riskTolerance} target`;
+  } else if (status === 'GREEN') {
+    keyFinding = 'Portfolio risk is well-aligned with your stated risk tolerance';
+  } else {
+    keyFinding = 'Some risk management adjustments may improve portfolio stability';
+  }
 
   return {
-    status: getStatus(score),
+    status,
     score,
-    keyFinding: hasConcentration 
-      ? `Top position (${positions[0]?.ticker}) is ${(topPosition * 100).toFixed(1)}% of portfolio`
-      : `Portfolio volatility is ${Math.abs(parseFloat(gapPercent))}% ${direction} target`,
-    headlineMetric: `Risk gap: ${gapPercent}%`,
+    keyFinding,
+    headlineMetric: `Largest Position: ${formatPct(topPosition)}% (Max ${formatPct(maxPosPct, 0)}%)`,
     details: {
       currentVolatility: volatility,
       targetVolatility: targetVol,
-      riskGap: riskGap,
+      riskGap,
       topPositions: positions.slice(0, 5),
       sectorWeights,
       hasConcentration,
       hasSectorConcentration,
+      maxSinglePositionPct: maxPosPct,
+      maxSectorPct: config.riskManagement.maxSectorPct,
     },
   };
 }
 
-function analyzeReturnEfficiency(holdings: Holding[], totalValue: number, expectedReturn: number, volatility: number, sharpeRatio: number): DiagnosticResult {
-  const benchmarkSharpe = 0.5; // S&P 500 historical average
-  const sharpeGap = sharpeRatio - benchmarkSharpe;
+// ============================================================================
+// 2. RETURN EFFICIENCY (SHARPE)
+// ============================================================================
+function analyzeReturnEfficiency(
+  holdings: Holding[], 
+  totalValue: number, 
+  expectedReturn: number, 
+  volatility: number, 
+  sharpeRatio: number,
+  config: ScoringConfig
+): DiagnosticResult {
+  const targetSharpe = config.sharpe.portfolioTarget;
+  const sharpeGap = sharpeRatio - targetSharpe;
   
-  // Analyze individual holdings contribution
+  // Analyze individual holdings
+  const holdingGoodThreshold = config.sharpe.holdingGoodThreshold;
+  const holdingNeutralThreshold = holdingGoodThreshold - config.sharpe.holdingNeutralOffset;
+
   const holdingEfficiency = holdings.map(h => {
     const value = h.shares * h.currentPrice;
     const weight = value / totalValue;
@@ -126,37 +177,63 @@ function analyzeReturnEfficiency(holdings: Holding[], totalValue: number, expect
     const assetVol = VOLATILITY[h.assetClass] || 0.12;
     const holdingSharpe = assetVol > 0 ? (assetReturn - RISK_FREE_RATE) / assetVol : 0;
     
-    return {
-      ticker: h.ticker,
-      sharpe: holdingSharpe,
-      contribution: holdingSharpe > benchmarkSharpe ? 'GOOD' : holdingSharpe > benchmarkSharpe * 0.7 ? 'NEUTRAL' : 'POOR',
-      weight,
-    };
+    let contribution: 'GOOD' | 'NEUTRAL' | 'POOR';
+    if (holdingSharpe >= holdingGoodThreshold) contribution = 'GOOD';
+    else if (holdingSharpe >= holdingNeutralThreshold) contribution = 'NEUTRAL';
+    else contribution = 'POOR';
+
+    return { ticker: h.ticker, sharpe: holdingSharpe, contribution, weight };
   });
 
+  // Scoring
   let score = 50 + sharpeGap * 100;
   score = Math.max(0, Math.min(100, score));
 
+  const status = getStatus(score, config);
+
+  // Consistent key finding
+  let keyFinding: string;
+  if (sharpeGap >= 0) {
+    keyFinding = `Portfolio Sharpe ratio ${sharpeRatio.toFixed(2)} meets or exceeds ${targetSharpe.toFixed(2)} target`;
+  } else if (status === 'RED') {
+    keyFinding = `Portfolio Sharpe ratio ${sharpeRatio.toFixed(2)} is significantly below ${targetSharpe.toFixed(2)} target – poor risk-adjusted returns`;
+  } else {
+    keyFinding = `Portfolio Sharpe ratio ${sharpeRatio.toFixed(2)} is ${Math.abs(sharpeGap).toFixed(2)} below ${targetSharpe.toFixed(2)} target`;
+  }
+
   return {
-    status: getStatus(score),
+    status,
     score,
-    keyFinding: sharpeGap >= 0 
-      ? 'Portfolio is generating efficient risk-adjusted returns'
-      : `Sharpe ratio ${Math.abs(sharpeGap).toFixed(2)} below benchmark`,
-    headlineMetric: `Sharpe: ${sharpeRatio.toFixed(2)} vs ${benchmarkSharpe.toFixed(2)} benchmark`,
+    keyFinding,
+    headlineMetric: `Sharpe: ${sharpeRatio.toFixed(2)} vs ${targetSharpe.toFixed(2)} target`,
     details: {
       sharpeRatio,
-      benchmarkSharpe,
+      targetSharpe,
       expectedReturn,
       volatility,
       holdingEfficiency: holdingEfficiency.slice(0, 10),
+      holdingGoodThreshold,
+      holdingNeutralThreshold,
     },
   };
 }
 
-function analyzeCosts(holdings: Holding[], totalValue: number, totalFees: number): DiagnosticResult {
-  const feePercent = totalValue > 0 ? totalFees / totalValue : 0;
-  const tenYearImpact = totalValue * (1 - Math.pow(1 - feePercent, 10)) + totalFees * 10;
+// ============================================================================
+// 3. COST & FEE ANALYSIS
+// ============================================================================
+function analyzeCosts(
+  holdings: Holding[], 
+  totalValue: number, 
+  totalFees: number,
+  adviceModel: AdviceModel,
+  advisorFee: number,
+  config: ScoringConfig
+): DiagnosticResult {
+  const productFees = totalValue > 0 ? totalFees / totalValue : 0;
+  const allInFees = productFees + advisorFee;
+  const tenYearImpact = totalValue * (1 - Math.pow(1 - allInFees, 10));
+  
+  const thresholds = config.fees[adviceModel];
   
   const holdingFees = holdings.map(h => ({
     ticker: h.ticker,
@@ -165,36 +242,69 @@ function analyzeCosts(holdings: Holding[], totalValue: number, totalFees: number
     annualFee: h.shares * h.currentPrice * (h.expenseRatio ?? DEFAULT_EXPENSE_RATIOS.etf),
   })).sort((a, b) => b.annualFee - a.annualFee);
 
-  let score = 100;
-  if (feePercent > 0.01) score = 20;
-  else if (feePercent > 0.005) score = 50;
-  else if (feePercent > 0.003) score = 70;
+  // Scoring based on advice model thresholds
+  let score: number;
+  if (allInFees <= thresholds.greenMax) {
+    score = 85 + (1 - allInFees / thresholds.greenMax) * 15;
+  } else if (allInFees <= thresholds.yellowMax) {
+    const range = thresholds.yellowMax - thresholds.greenMax;
+    const position = (allInFees - thresholds.greenMax) / range;
+    score = 40 + (1 - position) * 30;
+  } else {
+    score = Math.max(0, 40 - (allInFees - thresholds.yellowMax) * 200);
+  }
+
+  const status = getStatus(score, config);
+
+  // Consistent key finding based on model
+  const modelLabel = adviceModel === 'self-directed' ? 'self-directed' 
+    : adviceModel === 'advisor-passive' ? 'passive advisor' : 'tactical advisor';
+  
+  let keyFinding: string;
+  if (status === 'GREEN') {
+    keyFinding = `Total fees ${formatPct(allInFees, 2)}% are reasonable for a ${modelLabel} relationship`;
+  } else if (status === 'YELLOW') {
+    keyFinding = `Total fees ${formatPct(allInFees, 2)}% are elevated for a ${modelLabel} relationship (typical: ${formatPct(thresholds.greenMax, 2)}-${formatPct(thresholds.yellowMax, 2)}%)`;
+  } else {
+    keyFinding = `Total fees ${formatPct(allInFees, 2)}% are HIGH for a ${modelLabel} relationship (above typical ${formatPct(thresholds.yellowMax, 2)}% range)`;
+  }
 
   return {
-    status: getStatus(score),
+    status,
     score,
-    keyFinding: feePercent > 0.005 
-      ? `High fees eroding ${(feePercent * 100).toFixed(2)}% annually`
-      : 'Fee structure is reasonable',
-    headlineMetric: `Total fees: $${totalFees.toLocaleString(undefined, { maximumFractionDigits: 0 })}/yr (${(feePercent * 100).toFixed(2)}%)`,
+    keyFinding,
+    headlineMetric: `Total all-in fees: ${formatPct(allInFees, 2)}% (${ADVICE_MODEL_LABELS[adviceModel]})`,
     details: {
-      totalFees,
-      feePercent,
+      productFees,
+      advisorFee,
+      allInFees,
       tenYearImpact,
       holdingFees,
+      adviceModel,
+      thresholds,
     },
   };
 }
 
-function analyzeTaxEfficiency(holdings: Holding[], totalValue: number): DiagnosticResult {
+// Need to import this for the label
+import { ADVICE_MODEL_LABELS } from './scoring-config';
+
+// ============================================================================
+// 4. TAX EFFICIENCY
+// ============================================================================
+function analyzeTaxEfficiency(
+  holdings: Holding[], 
+  totalValue: number,
+  config: ScoringConfig
+): DiagnosticResult {
   const taxableHoldings = holdings.filter(h => h.accountType === 'Taxable');
   
-  // Loss harvesting candidates
+  // Loss harvesting candidates - TAXABLE ACCOUNTS ONLY
   const lossCandidates = taxableHoldings.filter(h => h.currentPrice < h.costBasis);
   const totalHarvestable = lossCandidates.reduce((sum, h) => 
     sum + h.shares * (h.costBasis - h.currentPrice), 0
   );
-  const estimatedTaxSavings = totalHarvestable * 0.25; // Assume 25% tax rate
+  const estimatedTaxSavings = totalHarvestable * 0.25;
 
   // Tax-inefficient assets in taxable accounts
   const inefficientInTaxable = taxableHoldings.filter(h => 
@@ -202,30 +312,61 @@ function analyzeTaxEfficiency(holdings: Holding[], totalValue: number): Diagnost
   );
 
   let score = 80;
-  if (totalHarvestable > totalValue * 0.03) score += 10; // Harvesting opportunity
+  if (totalHarvestable > totalValue * 0.03) score += 10;
   if (inefficientInTaxable.length > 0) score -= 30;
 
+  const status = getStatus(score, config);
+
+  // Consistent key finding - emphasize TAXABLE accounts only
+  let keyFinding: string;
+  if (totalHarvestable > 0) {
+    keyFinding = `$${totalHarvestable.toLocaleString(undefined, { maximumFractionDigits: 0 })} in unrealized losses in TAXABLE accounts could be harvested for ~$${estimatedTaxSavings.toLocaleString(undefined, { maximumFractionDigits: 0 })} tax savings`;
+  } else if (inefficientInTaxable.length > 0) {
+    keyFinding = `${inefficientInTaxable.length} tax-inefficient holdings (bonds/commodities) are in taxable accounts – consider moving to tax-advantaged`;
+  } else if (status === 'GREEN') {
+    keyFinding = 'Tax positioning is efficient – tax-inefficient assets properly placed';
+  } else {
+    keyFinding = 'Review asset location for potential tax optimization';
+  }
+
   return {
-    status: getStatus(score),
+    status,
     score,
-    keyFinding: totalHarvestable > 0 
-      ? `$${totalHarvestable.toLocaleString(undefined, { maximumFractionDigits: 0 })} in harvestable losses available`
-      : inefficientInTaxable.length > 0 
-        ? 'Tax-inefficient assets in taxable accounts'
-        : 'Tax positioning is efficient',
-    headlineMetric: `Potential tax savings: $${estimatedTaxSavings.toLocaleString(undefined, { maximumFractionDigits: 0 })}`,
+    keyFinding,
+    headlineMetric: `Harvestable losses (taxable only): $${totalHarvestable.toLocaleString(undefined, { maximumFractionDigits: 0 })}`,
     details: {
-      lossCandidates,
+      lossCandidates: lossCandidates.map(h => ({
+        ticker: h.ticker,
+        accountType: h.accountType,
+        unrealizedLoss: h.shares * (h.costBasis - h.currentPrice),
+        harvestable: h.accountType === 'Taxable',
+      })),
       totalHarvestable,
       estimatedTaxSavings,
       inefficientInTaxable,
+      taxableHoldingsCount: taxableHoldings.length,
     },
   };
 }
 
-function analyzeDiversification(holdings: Holding[], totalValue: number): DiagnosticResult {
+// ============================================================================
+// 5. DIVERSIFICATION
+// ============================================================================
+function analyzeDiversification(
+  holdings: Holding[], 
+  totalValue: number,
+  config: ScoringConfig
+): DiagnosticResult {
   const numHoldings = holdings.length;
+  const isLargePortfolio = totalValue >= config.diversification.smallPortfolioThreshold;
   
+  const minHoldings = isLargePortfolio 
+    ? config.diversification.largePortfolioMinHoldings 
+    : config.diversification.smallPortfolioMinHoldings;
+  const maxHoldings = isLargePortfolio 
+    ? config.diversification.largePortfolioMaxHoldings 
+    : config.diversification.smallPortfolioMaxHoldings;
+
   // Asset class distribution
   const assetClassWeights: Record<AssetClass, number> = {
     'US Stocks': 0, 'Intl Stocks': 0, 'Bonds': 0, 'Commodities': 0, 'Cash': 0, 'Other': 0
@@ -235,39 +376,76 @@ function analyzeDiversification(holdings: Holding[], totalValue: number): Diagno
     assetClassWeights[h.assetClass] += weight;
   });
 
-  // Top 10 concentration
+  // Top position analysis
   const sortedByWeight = holdings
     .map(h => ({ ticker: h.ticker, weight: (h.shares * h.currentPrice) / totalValue }))
     .sort((a, b) => b.weight - a.weight);
+  const top3Weight = sortedByWeight.slice(0, 3).reduce((sum, h) => sum + h.weight, 0);
   const top10Weight = sortedByWeight.slice(0, 10).reduce((sum, h) => sum + h.weight, 0);
 
+  // Scoring
   let score = 70;
-  if (numHoldings < 5) score -= 30;
-  else if (numHoldings > 50) score -= 10;
-  if (top10Weight > 0.6) score -= 20;
+  const tooFewHoldings = numHoldings < minHoldings;
+  const tooManyHoldings = numHoldings > maxHoldings;
+  const top10TooConcentrated = top10Weight > config.diversification.top10ConcentrationMax;
+  const top3TooConcentrated = top3Weight > config.diversification.top3ConcentrationMax;
+
+  if (tooFewHoldings) score -= 30;
+  else if (tooManyHoldings) score -= 10;
+  if (top10TooConcentrated) score -= 20;
+  if (top3TooConcentrated) score -= 15;
   if (assetClassWeights['Bonds'] < 0.1 && assetClassWeights['US Stocks'] > 0.7) score -= 15;
 
-  const label = numHoldings < 5 ? 'TOO FEW' : numHoldings > 50 ? 'TOO MANY' : 'ADEQUATE';
+  const status = getStatus(score, config);
+
+  // Label
+  let label: string;
+  if (tooFewHoldings) label = 'TOO FEW';
+  else if (tooManyHoldings) label = 'TOO MANY';
+  else label = 'ADEQUATE';
+
+  // Consistent key finding
+  let keyFinding: string;
+  if (top3TooConcentrated) {
+    keyFinding = `${numHoldings} holdings is ${label.toLowerCase()}, but top 3 positions = ${formatPct(top3Weight, 0)}% – TOO concentrated`;
+  } else if (top10TooConcentrated) {
+    keyFinding = `Top 10 holdings = ${formatPct(top10Weight, 0)}% of portfolio, exceeding ${formatPct(config.diversification.top10ConcentrationMax, 0)}% target`;
+  } else if (tooFewHoldings) {
+    keyFinding = `Only ${numHoldings} holdings – consider adding positions for better diversification`;
+  } else if (status === 'GREEN') {
+    keyFinding = `${numHoldings} holdings across ${Object.values(assetClassWeights).filter(w => w > 0).length} asset classes – well diversified`;
+  } else {
+    keyFinding = 'Diversification could be improved through broader asset class exposure';
+  }
 
   return {
-    status: getStatus(score),
+    status,
     score,
-    keyFinding: top10Weight > 0.6 
-      ? `Top 10 holdings represent ${(top10Weight * 100).toFixed(0)}% of portfolio`
-      : `${numHoldings} holdings across ${Object.values(assetClassWeights).filter(w => w > 0).length} asset classes`,
-    headlineMetric: `Holdings: ${numHoldings} (${label})`,
+    keyFinding,
+    headlineMetric: `Top 10: ${formatPct(top10Weight, 0)}% (Target <${formatPct(config.diversification.top10ConcentrationMax, 0)}%)`,
     details: {
       numHoldings,
       assetClassWeights,
+      top3: sortedByWeight.slice(0, 3),
       top10: sortedByWeight.slice(0, 10),
+      top3Weight,
       top10Weight,
       holdingCountLabel: label,
+      minHoldings,
+      maxHoldings,
+      isLargePortfolio,
     },
   };
 }
 
-function analyzeProtection(holdings: Holding[], totalValue: number): DiagnosticResult {
-  // Simplified risk bucket scoring
+// ============================================================================
+// 6. PROTECTION & VULNERABILITY
+// ============================================================================
+function analyzeProtection(
+  holdings: Holding[], 
+  totalValue: number,
+  config: ScoringConfig
+): DiagnosticResult {
   const stockWeight = holdings
     .filter(h => h.assetClass === 'US Stocks' || h.assetClass === 'Intl Stocks')
     .reduce((sum, h) => sum + h.shares * h.currentPrice, 0) / totalValue;
@@ -284,23 +462,51 @@ function analyzeProtection(holdings: Holding[], totalValue: number): DiagnosticR
     creditRisk: 2,
   };
 
-  const highRisks = Object.values(scores).filter(s => s > 7).length;
+  const threshold = config.protection.highRiskThreshold;
+  const highRisks = Object.values(scores).filter(s => s > threshold).length;
+  const highRiskAreas = Object.entries(scores)
+    .filter(([_, s]) => s > threshold)
+    .map(([name]) => name.replace('Risk', ''));
+
   let score = 100 - highRisks * 20;
+  score = Math.max(0, score);
+
+  const status = getStatus(score, config);
+
+  // Consistent key finding
+  let keyFinding: string;
+  if (highRisks >= 3) {
+    keyFinding = `Portfolio has GAPS in protection – vulnerable to: ${highRiskAreas.join(', ')}`;
+  } else if (highRisks >= 2) {
+    keyFinding = `Some vulnerability areas detected: ${highRiskAreas.join(', ')}`;
+  } else if (status === 'GREEN') {
+    keyFinding = 'Portfolio has adequate protection against major risk factors';
+  } else {
+    keyFinding = 'Review protection against inflation and market downturns';
+  }
 
   return {
-    status: getStatus(score),
+    status,
     score,
-    keyFinding: highRisks >= 3 
-      ? 'Multiple high vulnerability areas detected'
-      : 'Portfolio has reasonable protection',
-    headlineMetric: `${highRisks} high-risk areas`,
-    details: { scores, stockWeight, bondWeight },
+    keyFinding,
+    headlineMetric: `${highRisks} high-risk areas (threshold: ${threshold}/10)`,
+    details: { scores, stockWeight, bondWeight, highRiskAreas, threshold },
   };
 }
 
-function analyzeRiskAdjusted(holdings: Holding[], clientInfo: ClientInfo, totalValue: number, expectedReturn: number, volatility: number): DiagnosticResult {
-  const sortinoRatio = volatility > 0 ? (expectedReturn - RISK_FREE_RATE) / (volatility * 0.7) : 0; // Simplified
-  const maxDrawdown = volatility * 2.5; // Rough estimate
+// ============================================================================
+// 7. RISK-ADJUSTED PERFORMANCE (GOAL PROBABILITY)
+// ============================================================================
+function analyzeRiskAdjusted(
+  holdings: Holding[], 
+  clientInfo: ClientInfo, 
+  totalValue: number, 
+  expectedReturn: number, 
+  volatility: number,
+  config: ScoringConfig
+): DiagnosticResult {
+  const sortinoRatio = volatility > 0 ? (expectedReturn - RISK_FREE_RATE) / (volatility * 0.7) : 0;
+  const maxDrawdown = volatility * 2.5;
   
   // Monte Carlo-lite probability
   let probability = 50;
@@ -310,21 +516,63 @@ function analyzeRiskAdjusted(holdings: Holding[], clientInfo: ClientInfo, totalV
     probability = Math.min(95, Math.max(5, 50 + zScore * 30));
   }
 
-  let score = probability;
+  // Score based on probability bands
+  let score: number;
+  if (probability >= config.goalProbability.greenMin) {
+    score = 70 + ((probability - config.goalProbability.greenMin) / 25) * 30;
+  } else if (probability >= config.goalProbability.yellowMin) {
+    const range = config.goalProbability.greenMin - config.goalProbability.yellowMin;
+    score = 40 + ((probability - config.goalProbability.yellowMin) / range) * 30;
+  } else {
+    score = (probability / config.goalProbability.yellowMin) * 40;
+  }
+  score = Math.min(100, Math.max(0, score));
+
   if (maxDrawdown > 0.4) score -= 20;
+  score = Math.max(0, score);
+
+  const status = getStatus(score, config);
+
+  // Determine band label
+  let bandLabel: string;
+  if (probability >= config.goalProbability.greenMin) bandLabel = 'Comfortable';
+  else if (probability >= config.goalProbability.yellowMin) bandLabel = 'Borderline';
+  else bandLabel = 'At Risk';
+
+  // Consistent key finding
+  let keyFinding: string;
+  if (probability >= config.goalProbability.greenMin) {
+    keyFinding = `${probability.toFixed(0)}% probability of reaching goal – comfortable margin`;
+  } else if (probability >= config.goalProbability.yellowMin) {
+    keyFinding = `${probability.toFixed(0)}% probability of reaching goal is BORDERLINE – may require adjustments`;
+  } else {
+    keyFinding = `${probability.toFixed(0)}% probability of reaching goal is LOW – plan changes likely needed`;
+  }
 
   return {
-    status: getStatus(score),
+    status,
     score,
-    keyFinding: probability >= 75 
-      ? 'High probability of achieving financial goals'
-      : `${probability.toFixed(0)}% probability of reaching target`,
-    headlineMetric: `Goal probability: ${probability.toFixed(0)}%`,
-    details: { sortinoRatio, maxDrawdown, probability },
+    keyFinding,
+    headlineMetric: `Goal probability: ${probability.toFixed(0)}% (${bandLabel})`,
+    details: { 
+      sortinoRatio, 
+      maxDrawdown, 
+      probability, 
+      bandLabel,
+      greenMin: config.goalProbability.greenMin,
+      yellowMin: config.goalProbability.yellowMin,
+    },
   };
 }
 
-function analyzeCrisisResilience(holdings: Holding[], totalValue: number): DiagnosticResult {
+// ============================================================================
+// 8. CRISIS RESILIENCE
+// ============================================================================
+function analyzeCrisisResilience(
+  holdings: Holding[], 
+  totalValue: number,
+  config: ScoringConfig
+): DiagnosticResult {
   const stockWeight = holdings
     .filter(h => h.assetClass === 'US Stocks' || h.assetClass === 'Intl Stocks')
     .reduce((sum, h) => sum + h.shares * h.currentPrice, 0) / totalValue;
@@ -342,26 +590,68 @@ function analyzeCrisisResilience(holdings: Holding[], totalValue: number): Diagn
   const avgImpact = scenarios.reduce((sum, s) => sum + s.portfolioImpact, 0) / scenarios.length;
   const avgSpImpact = scenarios.reduce((sum, s) => sum + s.spImpact, 0) / scenarios.length;
   
-  let score = 50;
-  if (avgImpact > avgSpImpact) score = 30;
-  else if (avgImpact > avgSpImpact * 0.8) score = 50;
-  else score = 70 + (avgSpImpact - avgImpact) * 100;
+  // Compare portfolio to S&P
+  const difference = avgImpact - avgSpImpact; // negative = better than S&P
+  const betterThanSp = difference < -config.crisisResilience.betterThanSpThreshold;
+  const similarToSp = Math.abs(difference) <= config.crisisResilience.similarToSpRange;
+  const worseThanSp = difference > config.crisisResilience.betterThanSpThreshold;
+
+  // Score based on comparison
+  let score: number;
+  if (betterThanSp) {
+    score = 75 + Math.min(25, Math.abs(difference) * 100);
+  } else if (similarToSp) {
+    score = 50 + (1 - Math.abs(difference) / config.crisisResilience.similarToSpRange) * 20;
+  } else {
+    score = Math.max(0, 50 - difference * 200);
+  }
+
+  const status = getStatus(Math.min(100, score), config);
+
+  // FIX: Key finding must match the actual comparison
+  let keyFinding: string;
+  if (betterThanSp) {
+    keyFinding = `In major crashes, portfolio projected to lose LESS than S&P 500 – better downside resilience`;
+  } else if (worseThanSp) {
+    keyFinding = `In major crashes, portfolio projected to fall MORE than S&P 500 – higher drawdown exposure`;
+  } else {
+    keyFinding = `Crisis performance similar to S&P 500 – consider adding defensive positions`;
+  }
+
+  // Find worst scenario for headline
+  const worst = scenarios.reduce((w, s) => s.portfolioImpact < w.portfolioImpact ? s : w, scenarios[0]);
 
   return {
-    status: getStatus(Math.min(100, score)),
+    status,
     score: Math.min(100, score),
-    keyFinding: avgImpact > avgSpImpact 
-      ? 'Portfolio more vulnerable than S&P in downturns'
-      : 'Portfolio shows defensive characteristics',
-    headlineMetric: `Avg crisis loss: ${(avgImpact * 100).toFixed(0)}% vs S&P ${(avgSpImpact * 100).toFixed(0)}%`,
-    details: { scenarios, avgImpact, avgSpImpact, beta: stockWeight },
+    keyFinding,
+    headlineMetric: `${worst.name}: ${formatPct(worst.portfolioImpact, 0)}% vs S&P ${formatPct(worst.spImpact, 0)}%`,
+    details: { 
+      scenarios, 
+      avgImpact, 
+      avgSpImpact, 
+      beta: stockWeight,
+      betterThanSp,
+      similarToSp,
+      worseThanSp,
+    },
   };
 }
 
-function analyzeOptimization(expectedReturn: number, volatility: number, sharpeRatio: number, totalFees: number, totalValue: number): DiagnosticResult {
-  // Estimate potential optimized Sharpe
-  const optimizedSharpe = sharpeRatio * 1.15; // 15% improvement potential
-  const improvementPotential = (optimizedSharpe - sharpeRatio) / sharpeRatio;
+// ============================================================================
+// 9. PORTFOLIO OPTIMIZATION
+// ============================================================================
+function analyzeOptimization(
+  expectedReturn: number, 
+  volatility: number, 
+  sharpeRatio: number, 
+  totalFees: number, 
+  totalValue: number,
+  config: ScoringConfig
+): DiagnosticResult {
+  const targetSharpe = config.sharpe.portfolioTarget;
+  const optimizedSharpe = sharpeRatio * 1.15;
+  const improvementPotential = (optimizedSharpe - sharpeRatio) / Math.max(sharpeRatio, 0.01);
   
   const recommendations = [];
   if (totalFees / totalValue > 0.005) {
@@ -371,17 +661,41 @@ function analyzeOptimization(expectedReturn: number, volatility: number, sharpeR
     recommendations.push('Add bond allocation to reduce volatility');
   }
 
-  let score = 100 - improvementPotential * 200;
+  // Score based on: 1) current vs target Sharpe, 2) improvement potential
+  let score: number;
+  if (sharpeRatio >= targetSharpe) {
+    // At or above target
+    score = 75 + Math.min(25, (sharpeRatio - targetSharpe) * 50);
+  } else {
+    // Below target - cannot be GREEN
+    const gap = targetSharpe - sharpeRatio;
+    score = Math.max(0, 70 - gap * 100);
+  }
+
+  // Also penalize if significant improvement is possible
+  if (improvementPotential > 0.15) score = Math.min(score, 65);
+  if (improvementPotential > 0.20) score = Math.min(score, 50);
+
+  const status = getStatus(score, config);
+
+  // Consistent key finding - if below target, cannot say "Good"
+  let keyFinding: string;
+  if (sharpeRatio >= targetSharpe && improvementPotential < 0.10) {
+    keyFinding = 'Portfolio is near-optimal – limited room for improvement';
+  } else if (sharpeRatio < targetSharpe) {
+    keyFinding = `Current Sharpe ${sharpeRatio.toFixed(2)} is below target ${targetSharpe.toFixed(2)} – optimization could materially improve returns`;
+  } else {
+    keyFinding = `${formatPct(improvementPotential, 0)}% Sharpe improvement possible through rebalancing`;
+  }
 
   return {
-    status: getStatus(score),
+    status,
     score: Math.max(0, score),
-    keyFinding: improvementPotential > 0.1 
-      ? `${(improvementPotential * 100).toFixed(0)}% Sharpe improvement possible`
-      : 'Portfolio is near-optimal',
-    headlineMetric: `Current Sharpe: ${sharpeRatio.toFixed(2)} → Optimized: ${optimizedSharpe.toFixed(2)}`,
+    keyFinding,
+    headlineMetric: `Sharpe: ${sharpeRatio.toFixed(2)} current → ${optimizedSharpe.toFixed(2)} optimized (Target: ${targetSharpe.toFixed(2)})`,
     details: {
       currentSharpe: sharpeRatio,
+      targetSharpe,
       optimizedSharpe,
       improvementPotential,
       recommendations,
@@ -398,30 +712,86 @@ function analyzeOptimization(expectedReturn: number, volatility: number, sharpeR
   };
 }
 
-function analyzePlanningGaps(checklist: PlanningChecklist): DiagnosticResult {
-  const items = Object.values(checklist);
-  const completed = items.filter(Boolean).length;
-  const total = items.length;
-  const completionRate = completed / total;
+// ============================================================================
+// 10. PLANNING GAPS
+// ============================================================================
+function analyzePlanningGaps(
+  checklist: PlanningChecklist,
+  config: ScoringConfig
+): DiagnosticResult {
+  const checklistItems = {
+    willTrust: { name: 'Will/Trust', critical: true },
+    beneficiaryReview: { name: 'Beneficiary Review', critical: false },
+    poaDirectives: { name: 'POA/Healthcare Directives', critical: true },
+    digitalAssetPlan: { name: 'Digital Asset Plan', critical: false },
+    insuranceCoverage: { name: 'Insurance Coverage', critical: false },
+    emergencyFund: { name: 'Emergency Fund', critical: true },
+    withdrawalStrategy: { name: 'Withdrawal Strategy', critical: false },
+  };
 
-  let score = completionRate * 100;
-  const criticalItems = [checklist.willTrust, checklist.poaDirectives, checklist.emergencyFund];
-  const criticalMissing = criticalItems.filter(x => !x).length;
-  if (criticalMissing > 0) score -= criticalMissing * 15;
+  const items = Object.entries(checklist) as [keyof PlanningChecklist, boolean][];
+  const completed = items.filter(([_, v]) => v).length;
+  const total = items.length;
+  
+  // Find missing items
+  const missingItems = items
+    .filter(([_, v]) => !v)
+    .map(([k]) => checklistItems[k]?.name || k);
+  
+  // Find critical missing items
+  const criticalMissing = items
+    .filter(([k, v]) => !v && config.planningGaps.criticalItems.includes(k))
+    .map(([k]) => checklistItems[k]?.name || k);
+
+  // Score
+  let score: number;
+  if (completed >= config.planningGaps.greenMinComplete) {
+    score = 70 + ((completed - config.planningGaps.greenMinComplete) / (total - config.planningGaps.greenMinComplete)) * 30;
+  } else if (completed >= config.planningGaps.yellowMinComplete) {
+    const range = config.planningGaps.greenMinComplete - config.planningGaps.yellowMinComplete;
+    score = 40 + ((completed - config.planningGaps.yellowMinComplete) / range) * 30;
+  } else {
+    score = (completed / config.planningGaps.yellowMinComplete) * 40;
+  }
+
+  // Extra penalty for critical items
+  score -= criticalMissing.length * 15;
+  score = Math.max(0, score);
+
+  const status = getStatus(score, config);
+
+  // Consistent key finding - specify what's missing
+  let keyFinding: string;
+  if (completed === total) {
+    keyFinding = 'Financial plan is comprehensive – all planning items complete';
+  } else if (criticalMissing.length > 0) {
+    keyFinding = `Critical gaps: ${criticalMissing.slice(0, 2).join(', ')}${criticalMissing.length > 2 ? ` (+${criticalMissing.length - 2} more)` : ''}`;
+  } else if (status === 'GREEN') {
+    keyFinding = `Most planning items complete – ${missingItems.length} minor item${missingItems.length > 1 ? 's' : ''} remaining`;
+  } else {
+    keyFinding = `Planning gaps remain: ${missingItems.slice(0, 2).join(', ')}`;
+  }
 
   return {
-    status: getStatus(Math.max(0, score)),
+    status,
     score: Math.max(0, score),
-    keyFinding: completionRate < 0.5 
-      ? `${total - completed} critical planning items incomplete`
-      : completionRate < 0.8 
-        ? 'Some planning gaps remain'
-        : 'Financial plan is comprehensive',
-    headlineMetric: `Planning: ${completed}/${total} complete`,
-    details: { checklist, completed, total, completionRate },
+    keyFinding,
+    headlineMetric: `Planning items: ${completed}/${total} complete`,
+    details: { 
+      checklist, 
+      completed, 
+      total, 
+      completionRate: completed / total,
+      missingItems,
+      criticalMissing,
+      checklistItems,
+    },
   };
 }
 
+// ============================================================================
+// GENERATE RECOMMENDATIONS
+// ============================================================================
 function generateRecommendations(analysis: Omit<PortfolioAnalysis, 'recommendations'>): Recommendation[] {
   const recommendations: Recommendation[] = [];
   let priority = 1;
@@ -429,12 +799,13 @@ function generateRecommendations(analysis: Omit<PortfolioAnalysis, 'recommendati
   const { diagnostics } = analysis;
 
   if (diagnostics.riskManagement.status === 'RED') {
+    const details = diagnostics.riskManagement.details as { maxSinglePositionPct: number };
     recommendations.push({
       id: `rec-${priority}`,
       category: 'riskManagement',
       priority: priority++,
       title: 'Reduce position concentration',
-      description: 'Largest positions exceed 10% threshold',
+      description: `Largest position exceeds ${formatPct(details.maxSinglePositionPct || 0.10, 0)}% threshold`,
       impact: 'Reduces single-stock risk by 30%',
     });
   }
@@ -444,9 +815,9 @@ function generateRecommendations(analysis: Omit<PortfolioAnalysis, 'recommendati
       id: `rec-${priority}`,
       category: 'costAnalysis',
       priority: priority++,
-      title: 'Switch to lower-cost funds',
-      description: 'Replace high-fee active funds with index equivalents',
-      impact: `Save $${((analysis.totalFees * 0.5)).toLocaleString(undefined, { maximumFractionDigits: 0 })}/year`,
+      title: 'Review fee structure',
+      description: 'Total fees may be elevated for your advice model',
+      impact: `Potential savings of $${((analysis.totalFees * 0.3)).toLocaleString(undefined, { maximumFractionDigits: 0 })}/year`,
     });
   }
 
@@ -457,19 +828,20 @@ function generateRecommendations(analysis: Omit<PortfolioAnalysis, 'recommendati
       category: 'taxEfficiency',
       priority: priority++,
       title: 'Harvest tax losses',
-      description: 'Realize losses to offset gains',
+      description: 'Realize losses in taxable accounts to offset gains',
       impact: `Potential $${(diagnostics.taxEfficiency.details.estimatedTaxSavings as number).toLocaleString(undefined, { maximumFractionDigits: 0 })} tax savings`,
     });
   }
 
   if (diagnostics.returnEfficiency.status !== 'GREEN') {
+    const details = diagnostics.returnEfficiency.details as { targetSharpe: number };
     recommendations.push({
       id: `rec-${priority}`,
       category: 'returnEfficiency',
       priority: priority++,
       title: 'Improve return efficiency',
-      description: 'Replace underperforming holdings with efficient alternatives',
-      impact: 'Improve Sharpe ratio by +0.1',
+      description: `Work toward Sharpe ratio target of ${(details.targetSharpe || 0.5).toFixed(2)}`,
+      impact: 'Better risk-adjusted returns',
     });
   }
 
@@ -479,18 +851,49 @@ function generateRecommendations(analysis: Omit<PortfolioAnalysis, 'recommendati
       category: 'diversification',
       priority: priority++,
       title: 'Improve diversification',
-      description: 'Add exposure to underweighted asset classes',
-      impact: 'Reduce portfolio correlation risk',
+      description: 'Reduce concentration or add underweighted asset classes',
+      impact: 'Lower portfolio correlation risk',
     });
+  }
+
+  if (diagnostics.protection.status === 'RED') {
+    recommendations.push({
+      id: `rec-${priority}`,
+      category: 'protection',
+      priority: priority++,
+      title: 'Address vulnerability gaps',
+      description: 'Portfolio has multiple high-risk exposure areas',
+      impact: 'Better protection against market stress',
+    });
+  }
+
+  if (diagnostics.planningGaps.status !== 'GREEN') {
+    const details = diagnostics.planningGaps.details as { criticalMissing: string[] };
+    if (details.criticalMissing?.length > 0) {
+      recommendations.push({
+        id: `rec-${priority}`,
+        category: 'planningGaps',
+        priority: priority++,
+        title: 'Complete critical planning items',
+        description: `Missing: ${details.criticalMissing.slice(0, 2).join(', ')}`,
+        impact: 'Comprehensive financial protection',
+      });
+    }
   }
 
   return recommendations.slice(0, 5);
 }
 
+// ============================================================================
+// MAIN ANALYSIS FUNCTION
+// ============================================================================
 export function analyzePortfolio(
   holdings: Holding[],
   clientInfo: ClientInfo,
-  planningChecklist: PlanningChecklist
+  planningChecklist: PlanningChecklist,
+  config: ScoringConfig = DEFAULT_SCORING_CONFIG,
+  adviceModel: AdviceModel = 'self-directed',
+  advisorFee: number = 0
 ): PortfolioAnalysis {
   const metrics = calculatePortfolioMetrics(holdings);
   
@@ -516,23 +919,23 @@ export function analyzePortfolio(
         riskAdjusted: emptyResult,
         crisisResilience: emptyResult,
         optimization: emptyResult,
-        planningGaps: analyzePlanningGaps(planningChecklist),
+        planningGaps: analyzePlanningGaps(planningChecklist, config),
       },
       recommendations: [],
     };
   }
 
   const diagnostics = {
-    riskManagement: analyzeRiskManagement(holdings, clientInfo, metrics.totalValue, metrics.volatility),
-    protection: analyzeProtection(holdings, metrics.totalValue),
-    returnEfficiency: analyzeReturnEfficiency(holdings, metrics.totalValue, metrics.expectedReturn, metrics.volatility, metrics.sharpeRatio),
-    costAnalysis: analyzeCosts(holdings, metrics.totalValue, metrics.totalFees),
-    taxEfficiency: analyzeTaxEfficiency(holdings, metrics.totalValue),
-    diversification: analyzeDiversification(holdings, metrics.totalValue),
-    riskAdjusted: analyzeRiskAdjusted(holdings, clientInfo, metrics.totalValue, metrics.expectedReturn, metrics.volatility),
-    crisisResilience: analyzeCrisisResilience(holdings, metrics.totalValue),
-    optimization: analyzeOptimization(metrics.expectedReturn, metrics.volatility, metrics.sharpeRatio, metrics.totalFees, metrics.totalValue),
-    planningGaps: analyzePlanningGaps(planningChecklist),
+    riskManagement: analyzeRiskManagement(holdings, clientInfo, metrics.totalValue, metrics.volatility, config),
+    protection: analyzeProtection(holdings, metrics.totalValue, config),
+    returnEfficiency: analyzeReturnEfficiency(holdings, metrics.totalValue, metrics.expectedReturn, metrics.volatility, metrics.sharpeRatio, config),
+    costAnalysis: analyzeCosts(holdings, metrics.totalValue, metrics.totalFees, adviceModel, advisorFee, config),
+    taxEfficiency: analyzeTaxEfficiency(holdings, metrics.totalValue, config),
+    diversification: analyzeDiversification(holdings, metrics.totalValue, config),
+    riskAdjusted: analyzeRiskAdjusted(holdings, clientInfo, metrics.totalValue, metrics.expectedReturn, metrics.volatility, config),
+    crisisResilience: analyzeCrisisResilience(holdings, metrics.totalValue, config),
+    optimization: analyzeOptimization(metrics.expectedReturn, metrics.volatility, metrics.sharpeRatio, metrics.totalFees, metrics.totalValue, config),
+    planningGaps: analyzePlanningGaps(planningChecklist, config),
   };
 
   // Calculate overall health score

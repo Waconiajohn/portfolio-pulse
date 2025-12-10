@@ -3,6 +3,7 @@ import { Holding, ClientInfo, PlanningChecklist, PortfolioAnalysis } from '@/typ
 import { analyzePortfolio } from '@/lib/analysis-engine';
 import { DIAGNOSTIC_CATEGORIES } from '@/lib/constants';
 import { PortfolioAssumptions, DEFAULT_ASSUMPTIONS, saveAssumptions, loadAssumptions } from '@/lib/assumptions';
+import { ScoringConfig, DEFAULT_SCORING_CONFIG, loadScoringConfig, saveScoringConfig, AdviceModel } from '@/lib/scoring-config';
 import { SAMPLE_HOLDINGS } from '@/lib/sample-data';
 import { computeCorrelationMatrix, generateSimulatedReturns, analyzeCorrelationIssues, CorrelationMatrixResult } from '@/lib/correlation';
 import { Header } from './Header';
@@ -45,10 +46,13 @@ export function PortfolioDashboard() {
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState('dashboard');
   const [assumptions, setAssumptions] = useState<PortfolioAssumptions>(() => loadAssumptions());
+  const [scoringConfig, setScoringConfig] = useState<ScoringConfig>(() => loadScoringConfig());
+  const [adviceModel, setAdviceModel] = useState<AdviceModel>('self-directed');
+  const [advisorFee, setAdvisorFee] = useState(0);
 
   const analysis: PortfolioAnalysis = useMemo(() => {
-    return analyzePortfolio(holdings, clientInfo, checklist);
-  }, [holdings, clientInfo, checklist]);
+    return analyzePortfolio(holdings, clientInfo, checklist, scoringConfig, adviceModel, advisorFee);
+  }, [holdings, clientInfo, checklist, scoringConfig, adviceModel, advisorFee]);
 
   // Compute correlation matrix when holdings change
   const correlationData: CorrelationMatrixResult = useMemo(() => {
@@ -69,12 +73,20 @@ export function PortfolioDashboard() {
     saveAssumptions(newAssumptions);
   }, []);
 
+  const handleScoringConfigChange = useCallback((newConfig: ScoringConfig) => {
+    setScoringConfig(newConfig);
+    saveScoringConfig(newConfig);
+    toast.success('Scoring benchmarks saved');
+  }, []);
+
   const handleLoadSample = useCallback(() => {
     setHoldings(SAMPLE_HOLDINGS);
     setClientInfo({
       name: 'John & Sarah Smith',
       meetingDate: new Date().toISOString().split('T')[0],
       riskTolerance: 'Moderate',
+      targetAmount: 2000000,
+      yearsToGoal: 15,
     });
     setChecklist({
       willTrust: true,
@@ -98,8 +110,14 @@ export function PortfolioDashboard() {
         holdings={holdings}
         notes={notes}
         assumptions={assumptions}
+        scoringConfig={scoringConfig}
+        adviceModel={adviceModel}
+        advisorFee={advisorFee}
         onClientInfoChange={setClientInfo}
         onAssumptionsChange={handleAssumptionsChange}
+        onScoringConfigChange={handleScoringConfigChange}
+        onAdviceModelChange={setAdviceModel}
+        onAdvisorFeeChange={setAdvisorFee}
         onLoadSample={handleLoadSample}
       />
 
@@ -141,6 +159,7 @@ export function PortfolioDashboard() {
                         key={key}
                         name={config.name}
                         iconName={config.icon}
+                        categoryKey={key}
                         result={analysis.diagnostics[key as keyof typeof analysis.diagnostics]}
                         onViewDetails={() => setSelectedCategory(key)}
                       />
@@ -199,7 +218,7 @@ export function PortfolioDashboard() {
                     <div className="p-4 rounded-lg bg-muted/30 border border-border">
                       <div className="text-xs text-muted-foreground uppercase tracking-wider">Sharpe Ratio</div>
                       <div className="font-mono text-2xl font-semibold mt-1">{analysis.sharpeRatio.toFixed(2)}</div>
-                      <div className="text-xs text-muted-foreground mt-1">Benchmark: 0.50</div>
+                      <div className="text-xs text-muted-foreground mt-1">Target: {scoringConfig.sharpe.portfolioTarget.toFixed(2)}</div>
                     </div>
                     <div className="p-4 rounded-lg bg-muted/30 border border-border">
                       <div className="text-xs text-muted-foreground uppercase tracking-wider">Expected Return</div>

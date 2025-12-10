@@ -1,5 +1,6 @@
 import { DiagnosticResult } from '@/types/portfolio';
 import { StatusBadge } from './StatusBadge';
+import { EducationPopup } from './EducationPopup';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { 
@@ -18,6 +19,7 @@ import {
   LucideIcon
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { STATUS_LABELS } from '@/lib/scoring-config';
 
 const iconMap: Record<string, LucideIcon> = {
   Shield, ShieldAlert, TrendingUp, DollarSign, Receipt, 
@@ -27,11 +29,12 @@ const iconMap: Record<string, LucideIcon> = {
 interface DiagnosticCardProps {
   name: string;
   iconName: string;
+  categoryKey: string;
   result: DiagnosticResult;
   onViewDetails: () => void;
 }
 
-export function DiagnosticCard({ name, iconName, result, onViewDetails }: DiagnosticCardProps) {
+export function DiagnosticCard({ name, iconName, categoryKey, result, onViewDetails }: DiagnosticCardProps) {
   const IconComponent = iconMap[iconName] || FileQuestion;
 
   const getGlowClass = () => {
@@ -51,9 +54,12 @@ export function DiagnosticCard({ name, iconName, result, onViewDetails }: Diagno
             <div className="p-2 rounded-lg bg-secondary">
               <IconComponent size={18} className="text-primary" />
             </div>
-            <CardTitle className="text-sm font-medium">{name}</CardTitle>
+            <div className="flex items-center gap-1">
+              <CardTitle className="text-sm font-medium">{name}</CardTitle>
+              <EducationPopup categoryKey={categoryKey} />
+            </div>
           </div>
-          <StatusBadge status={result.status} size="sm" />
+          <StatusBadge status={result.status} label={STATUS_LABELS[result.status]} size="sm" />
         </div>
       </CardHeader>
       <CardContent className="space-y-3">

@@ -88,6 +88,88 @@ export interface ScoringConfig {
 }
 
 // ============================================================================
+// RISK TOLERANCE ADJUSTMENTS
+// ============================================================================
+export interface RiskToleranceAdjustments {
+  maxSinglePositionPct: number;
+  maxSectorPct: number;
+  top10ConcentrationMax: number;
+  top3ConcentrationMax: number;
+  goalProbabilityGreenMin: number;
+  goalProbabilityYellowMin: number;
+  sharpeTarget: number;
+  protectionHighRiskThreshold: number;
+}
+
+export const RISK_TOLERANCE_ADJUSTMENTS: Record<RiskTolerance, RiskToleranceAdjustments> = {
+  Conservative: {
+    maxSinglePositionPct: 0.08,       // Stricter: 8% max single position
+    maxSectorPct: 0.25,               // Stricter: 25% max sector
+    top10ConcentrationMax: 0.45,      // Stricter: 45% top 10
+    top3ConcentrationMax: 0.35,       // Stricter: 35% top 3
+    goalProbabilityGreenMin: 80,      // Higher bar for "Good"
+    goalProbabilityYellowMin: 60,     // Higher bar for "Caution"
+    sharpeTarget: 0.40,               // Lower Sharpe expectation (less risky = lower returns)
+    protectionHighRiskThreshold: 6,   // More sensitive to risk areas
+  },
+  Moderate: {
+    maxSinglePositionPct: 0.10,       // Default: 10%
+    maxSectorPct: 0.30,               // Default: 30%
+    top10ConcentrationMax: 0.50,      // Default: 50%
+    top3ConcentrationMax: 0.40,       // Default: 40%
+    goalProbabilityGreenMin: 75,      // Default
+    goalProbabilityYellowMin: 50,     // Default
+    sharpeTarget: 0.50,               // Default
+    protectionHighRiskThreshold: 7,   // Default
+  },
+  Aggressive: {
+    maxSinglePositionPct: 0.15,       // More lenient: 15% max single position
+    maxSectorPct: 0.40,               // More lenient: 40% max sector
+    top10ConcentrationMax: 0.60,      // More lenient: 60% top 10
+    top3ConcentrationMax: 0.50,       // More lenient: 50% top 3
+    goalProbabilityGreenMin: 65,      // Lower bar acceptable
+    goalProbabilityYellowMin: 40,     // Lower bar acceptable
+    sharpeTarget: 0.55,               // Higher Sharpe expectation (more risk = higher returns)
+    protectionHighRiskThreshold: 8,   // Less sensitive to risk areas
+  },
+};
+
+// Apply risk tolerance adjustments to a config
+export function applyRiskToleranceAdjustments(
+  baseConfig: ScoringConfig,
+  riskTolerance: RiskTolerance
+): ScoringConfig {
+  const adjustments = RISK_TOLERANCE_ADJUSTMENTS[riskTolerance];
+  
+  return {
+    ...baseConfig,
+    riskManagement: {
+      ...baseConfig.riskManagement,
+      maxSinglePositionPct: adjustments.maxSinglePositionPct,
+      maxSectorPct: adjustments.maxSectorPct,
+    },
+    diversification: {
+      ...baseConfig.diversification,
+      top10ConcentrationMax: adjustments.top10ConcentrationMax,
+      top3ConcentrationMax: adjustments.top3ConcentrationMax,
+    },
+    goalProbability: {
+      greenMin: adjustments.goalProbabilityGreenMin,
+      yellowMin: adjustments.goalProbabilityYellowMin,
+    },
+    sharpe: {
+      ...baseConfig.sharpe,
+      portfolioTarget: adjustments.sharpeTarget,
+      holdingGoodThreshold: adjustments.sharpeTarget,
+    },
+    protection: {
+      ...baseConfig.protection,
+      highRiskThreshold: adjustments.protectionHighRiskThreshold,
+    },
+  };
+}
+
+// ============================================================================
 // DEFAULT SCORING CONFIGURATION
 // ============================================================================
 export const DEFAULT_SCORING_CONFIG: ScoringConfig = {

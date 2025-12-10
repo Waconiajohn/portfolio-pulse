@@ -103,6 +103,7 @@ export function Header({
               onAdviceModelChange={onAdviceModelChange}
               advisorFee={advisorFee}
               onAdvisorFeeChange={onAdvisorFeeChange}
+              currentRiskTolerance={clientInfo.riskTolerance}
             />
           </div>
         </div>

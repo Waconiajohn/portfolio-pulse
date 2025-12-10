@@ -69,9 +69,9 @@ export function CorrelationHeatmap({
       <CardContent>
         <div className="h-[350px]">
           <Plot
-            data={plotData}
-            layout={layout}
-            config={config}
+            data={plotData as any}
+            layout={layout as any}
+            config={config as any}
             style={{ width: '100%', height: '100%' }}
             useResizeHandler={true}
           />

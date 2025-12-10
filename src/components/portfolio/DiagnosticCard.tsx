@@ -1,4 +1,4 @@
-import { DiagnosticResult } from '@/types/portfolio';
+import { DiagnosticResult, RiskTolerance } from '@/types/portfolio';
 import { StatusBadge } from './StatusBadge';
 import { EducationPopup } from './EducationPopup';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -19,7 +19,7 @@ import {
   LucideIcon
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { STATUS_LABELS } from '@/lib/scoring-config';
+import { STATUS_LABELS, ScoringConfig, DEFAULT_SCORING_CONFIG } from '@/lib/scoring-config';
 
 const iconMap: Record<string, LucideIcon> = {
   Shield, ShieldAlert, TrendingUp, DollarSign, Receipt, 
@@ -32,9 +32,19 @@ interface DiagnosticCardProps {
   categoryKey: string;
   result: DiagnosticResult;
   onViewDetails: () => void;
+  scoringConfig?: ScoringConfig;
+  riskTolerance?: RiskTolerance;
 }
 
-export function DiagnosticCard({ name, iconName, categoryKey, result, onViewDetails }: DiagnosticCardProps) {
+export function DiagnosticCard({ 
+  name, 
+  iconName, 
+  categoryKey, 
+  result, 
+  onViewDetails,
+  scoringConfig = DEFAULT_SCORING_CONFIG,
+  riskTolerance = 'Moderate'
+}: DiagnosticCardProps) {
   const IconComponent = iconMap[iconName] || FileQuestion;
 
   const getGlowClass = () => {
@@ -56,7 +66,11 @@ export function DiagnosticCard({ name, iconName, categoryKey, result, onViewDeta
             </div>
             <div className="flex items-center gap-1">
               <CardTitle className="text-sm font-medium">{name}</CardTitle>
-              <EducationPopup categoryKey={categoryKey} />
+              <EducationPopup 
+                categoryKey={categoryKey} 
+                scoringConfig={scoringConfig}
+                riskTolerance={riskTolerance}
+              />
             </div>
           </div>
           <StatusBadge status={result.status} label={STATUS_LABELS[result.status]} showLabel size="sm" />

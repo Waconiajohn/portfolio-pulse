@@ -1,14 +1,19 @@
-import { DiagnosticResult } from '@/types/portfolio';
+import { DiagnosticResult, RiskTolerance, PlanningChecklist } from '@/types/portfolio';
 import { StatusBadge } from './StatusBadge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { X } from 'lucide-react';
+import { X, Check, AlertCircle, Info } from 'lucide-react';
 import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
+import { ScoringConfig, DEFAULT_SCORING_CONFIG, getEducationContent } from '@/lib/scoring-config';
+import { Badge } from '@/components/ui/badge';
 
 interface DetailViewProps {
   name: string;
+  categoryKey: string;
   result: DiagnosticResult;
   onClose: () => void;
+  scoringConfig?: ScoringConfig;
+  riskTolerance?: RiskTolerance;
 }
 
 const CHART_COLORS = [
@@ -20,8 +25,17 @@ const CHART_COLORS = [
   'hsl(190, 90%, 50%)',
 ];
 
-export function DetailView({ name, result, onClose }: DetailViewProps) {
+export function DetailView({ 
+  name, 
+  categoryKey,
+  result, 
+  onClose,
+  scoringConfig = DEFAULT_SCORING_CONFIG,
+  riskTolerance = 'Moderate'
+}: DetailViewProps) {
   const { details } = result;
+  const educationContent = getEducationContent(scoringConfig, riskTolerance);
+  const education = educationContent[categoryKey];
 
   const renderSectorChart = () => {
     if (!details.sectorWeights) return null;
@@ -199,6 +213,101 @@ export function DetailView({ name, result, onClose }: DetailViewProps) {
     );
   };
 
+  const renderTaxHarvestingTable = () => {
+    if (!details.lossCandidates) return null;
+    
+    const candidates = details.lossCandidates as Array<{ 
+      ticker: string; 
+      accountType: string; 
+      unrealizedLoss: number; 
+      harvestable: boolean;
+    }>;
+
+    if (candidates.length === 0) return null;
+
+    return (
+      <div className="space-y-2">
+        <h4 className="text-sm font-medium">Tax-Loss Harvesting Candidates</h4>
+        <div className="text-xs text-muted-foreground mb-2">
+          Only losses in taxable accounts can be harvested. Watch for wash sale rules when replacing positions.
+        </div>
+        <div className="space-y-1">
+          {candidates.map(c => (
+            <div key={c.ticker} className="flex items-center justify-between text-sm p-2 rounded bg-muted/30">
+              <div className="flex items-center gap-2">
+                <span className="font-mono">{c.ticker}</span>
+                <Badge variant="outline" className="text-xs">
+                  {c.accountType}
+                </Badge>
+              </div>
+              <div className="flex items-center gap-3">
+                <span className="font-mono text-destructive">
+                  -${c.unrealizedLoss.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                </span>
+                <span className={`text-xs px-2 py-0.5 rounded ${
+                  c.harvestable ? 'status-good' : 'bg-muted text-muted-foreground'
+                }`}>
+                  {c.harvestable ? 'Harvestable (Taxable)' : 'N/A - Qualified'}
+                </span>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  };
+
+  const renderPlanningChecklist = () => {
+    if (!details.checklistItems || !details.checklist) return null;
+    
+    const checklistItems = details.checklistItems as Record<string, { name: string; critical: boolean }>;
+    const checklist = details.checklist as PlanningChecklist;
+
+    const items = Object.entries(checklistItems).map(([key, config]) => ({
+      key,
+      name: config.name,
+      critical: config.critical,
+      completed: checklist[key as keyof PlanningChecklist] || false,
+    }));
+
+    return (
+      <div className="space-y-2 col-span-2">
+        <h4 className="text-sm font-medium">Planning Checklist Details</h4>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+          {items.map(item => (
+            <div 
+              key={item.key} 
+              className={`flex items-center justify-between p-3 rounded border ${
+                item.completed 
+                  ? 'bg-status-good/5 border-status-good/20' 
+                  : item.critical 
+                  ? 'bg-status-critical/5 border-status-critical/20' 
+                  : 'bg-muted/30 border-border'
+              }`}
+            >
+              <div className="flex items-center gap-2">
+                {item.completed ? (
+                  <Check size={16} className="text-status-good" />
+                ) : (
+                  <AlertCircle size={16} className={item.critical ? 'text-status-critical' : 'text-muted-foreground'} />
+                )}
+                <span className="text-sm">{item.name}</span>
+              </div>
+              <div className="flex items-center gap-2">
+                {item.critical && !item.completed && (
+                  <Badge variant="destructive" className="text-xs">Critical</Badge>
+                )}
+                <span className={`text-xs ${item.completed ? 'text-status-good' : 'text-muted-foreground'}`}>
+                  {item.completed ? 'Complete' : 'Missing'}
+                </span>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  };
+
   return (
     <Card className="animate-slide-up">
       <CardHeader className="flex flex-row items-center justify-between">
@@ -211,13 +320,29 @@ export function DetailView({ name, result, onClose }: DetailViewProps) {
         </Button>
       </CardHeader>
       <CardContent className="space-y-6">
+        {/* Education Summary */}
+        {education && (
+          <div className="p-4 rounded-lg bg-primary/5 border border-primary/20">
+            <div className="flex items-start gap-2">
+              <Info size={16} className="text-primary mt-0.5 shrink-0" />
+              <div className="space-y-1">
+                <div className="text-sm font-medium text-primary">{education.title}</div>
+                <p className="text-xs text-muted-foreground">{education.whatItMeasures}</p>
+                {education.riskToleranceNote && (
+                  <p className="text-xs text-primary/80 mt-1">{education.riskToleranceNote}</p>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
         <div className="grid grid-cols-2 gap-4">
           <div className="p-4 rounded-lg bg-muted/30 border border-border">
             <div className="text-sm text-muted-foreground mb-1">Key Finding</div>
             <div className="font-medium">{result.keyFinding}</div>
           </div>
           <div className="p-4 rounded-lg bg-muted/30 border border-border">
-            <div className="text-sm text-muted-foreground mb-1">Headline Metric</div>
+            <div className="text-sm text-muted-foreground mb-1">Primary Metric</div>
             <div className="font-mono font-medium">{result.headlineMetric}</div>
           </div>
         </div>
@@ -228,6 +353,8 @@ export function DetailView({ name, result, onClose }: DetailViewProps) {
           {renderFeeBreakdown()}
           {renderEfficiencyTable()}
           {renderScenarios()}
+          {renderTaxHarvestingTable()}
+          {renderPlanningChecklist()}
         </div>
       </CardContent>
     </Card>

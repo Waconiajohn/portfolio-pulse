@@ -85,6 +85,12 @@ export interface ScoringConfig {
     highRiskThreshold: number; // Risk score above this = high risk area
     maxHighRiskAreas: number;  // Max high risk areas before RED
   };
+
+  // Lifetime Income Security
+  lifetimeIncomeSecurity: {
+    coreCoverageGreen: number;   // 100%+ of core covered = GREEN
+    coreCoverageYellow: number;  // 80-100% = YELLOW
+  };
 }
 
 // ============================================================================
@@ -228,6 +234,11 @@ export const DEFAULT_SCORING_CONFIG: ScoringConfig = {
     highRiskThreshold: 7,
     maxHighRiskAreas: 2,
   },
+
+  lifetimeIncomeSecurity: {
+    coreCoverageGreen: 1.0,   // 100%+ of core covered
+    coreCoverageYellow: 0.8,  // 80-100% = YELLOW
+  },
 };
 
 // ============================================================================
@@ -335,6 +346,18 @@ export function getEducationContent(
       whatItMeasures: 'Tracks completion of essential planning items: estate documents, beneficiary reviews, healthcare directives, insurance, emergency fund, and withdrawal strategy.',
       goodVsBad: `GOOD: ${config.planningGaps.greenMinComplete}+ of 7 items complete, especially critical items (will, POA, emergency fund). BAD: Critical gaps in estate planning or no emergency fund leave you exposed to unnecessary risk.`,
       interpretation: 'Financial planning is more than investments. Missing documents can cause family hardship and unnecessary costs during difficult times.',
+    },
+
+    lifetimeIncomeSecurity: {
+      title: 'Lifetime Income Security',
+      whatItMeasures: 'Measures how well guaranteed income sources (Social Security, pensions, annuities) cover your core living expenses for life.',
+      goodVsBad: `GOOD: Guaranteed income covers ≥${(config.lifetimeIncomeSecurity.coreCoverageGreen * 100).toFixed(0)}% of core expenses. NEEDS ATTENTION: ${(config.lifetimeIncomeSecurity.coreCoverageYellow * 100).toFixed(0)}-99% coverage. CRITICAL: <${(config.lifetimeIncomeSecurity.coreCoverageYellow * 100).toFixed(0)}% coverage leaves lifestyle dependent on market returns.`,
+      interpretation: 'When core expenses are fully covered by guarantees, the remaining portfolio can be managed more aggressively for discretionary and legacy goals without increasing lifestyle risk.',
+      riskToleranceNote: riskTolerance === 'Conservative'
+        ? 'Conservative investors especially benefit from guaranteed income covering 100%+ of core expenses to minimize market dependency.'
+        : riskTolerance === 'Aggressive'
+        ? 'Even aggressive investors should ensure core living expenses have guaranteed coverage before taking portfolio risk.'
+        : 'Securing core expenses with guarantees allows the portfolio to focus on growth, discretionary spending, and legacy.',
     },
   };
 }

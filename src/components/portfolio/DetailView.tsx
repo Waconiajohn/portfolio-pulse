@@ -1,4 +1,4 @@
-import { DiagnosticResult, RiskTolerance, PlanningChecklist } from '@/types/portfolio';
+import { DiagnosticResult, RiskTolerance, PlanningChecklist, GuaranteedIncomeSource } from '@/types/portfolio';
 import { StatusBadge } from './StatusBadge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -372,6 +372,175 @@ export function DetailView({
     );
   };
 
+  const renderLifetimeIncomeDetail = () => {
+    if (categoryKey !== 'lifetimeIncomeSecurity') return null;
+    
+    const sources = (details.sources || []) as GuaranteedIncomeSource[];
+    const coreExpenses = details.coreExpensesMonthly as number;
+    const discretionary = details.discretionaryMonthly as number;
+    const healthcare = details.healthcareMonthly as number;
+    const totalExpenses = details.totalExpensesMonthly as number;
+    const guaranteedIncome = details.guaranteedLifetimeIncomeMonthly as number;
+    const coreCoverage = details.coreCoveragePct as number;
+    const totalCoverage = details.totalCoveragePct as number;
+    const shortfall = details.shortfallCoreMonthly as number;
+    const surplus = details.surplusForLifestyleMonthly as number;
+
+    if (!coreExpenses && sources.length === 0) return null;
+
+    const coverageChartData = [
+      { name: 'Covered', value: Math.min(guaranteedIncome, coreExpenses), fill: 'hsl(142, 76%, 46%)' },
+      { name: 'Shortfall', value: shortfall, fill: 'hsl(0, 84%, 60%)' },
+    ].filter(d => d.value > 0);
+
+    const SOURCE_TYPE_LABELS: Record<string, string> = {
+      'social-security-client': 'SS (Client)',
+      'social-security-spouse': 'SS (Spouse)',
+      'pension-client': 'Pension (Client)',
+      'pension-spouse': 'Pension (Spouse)',
+      'guaranteed-annuity': 'Annuity',
+      'other-guaranteed': 'Other',
+    };
+
+    return (
+      <div className="space-y-4 col-span-2">
+        <h4 className="text-sm font-medium">Lifetime Income Analysis</h4>
+        
+        {/* Coverage Summary */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          <div className="p-3 rounded-lg bg-muted/30 border border-border">
+            <div className="text-xs text-muted-foreground">Core Expenses</div>
+            <div className="font-mono font-semibold">${coreExpenses.toLocaleString()}/mo</div>
+          </div>
+          <div className="p-3 rounded-lg bg-muted/30 border border-border">
+            <div className="text-xs text-muted-foreground">Discretionary</div>
+            <div className="font-mono font-semibold">${discretionary.toLocaleString()}/mo</div>
+          </div>
+          <div className="p-3 rounded-lg bg-muted/30 border border-border">
+            <div className="text-xs text-muted-foreground">Healthcare/LTC</div>
+            <div className="font-mono font-semibold">${healthcare.toLocaleString()}/mo</div>
+          </div>
+          <div className="p-3 rounded-lg bg-primary/10 border border-primary/20">
+            <div className="text-xs text-muted-foreground">Guaranteed Income</div>
+            <div className="font-mono font-semibold text-primary">${guaranteedIncome.toLocaleString()}/mo</div>
+          </div>
+        </div>
+
+        {/* Coverage Chart */}
+        {coverageChartData.length > 0 && (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="h-48">
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie
+                    data={coverageChartData}
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={40}
+                    outerRadius={70}
+                    paddingAngle={2}
+                    dataKey="value"
+                    label={({ name, value }) => `${name}: $${value.toLocaleString()}`}
+                    labelLine={false}
+                  >
+                    {coverageChartData.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={entry.fill} />
+                    ))}
+                  </Pie>
+                  <Tooltip 
+                    contentStyle={{ 
+                      backgroundColor: 'hsl(222, 47%, 10%)', 
+                      border: '1px solid hsl(217, 33%, 17%)',
+                      borderRadius: '8px',
+                    }}
+                    formatter={(value: number) => [`$${value.toLocaleString()}/mo`, '']}
+                  />
+                </PieChart>
+              </ResponsiveContainer>
+            </div>
+            
+            <div className="space-y-3">
+              <div className={`p-3 rounded-lg border ${
+                coreCoverage >= 1 ? 'bg-status-good/10 border-status-good/20' :
+                coreCoverage >= 0.8 ? 'bg-status-warning/10 border-status-warning/20' :
+                'bg-status-critical/10 border-status-critical/20'
+              }`}>
+                <div className="text-xs text-muted-foreground">Core Expense Coverage</div>
+                <div className={`font-mono text-2xl font-semibold ${
+                  coreCoverage >= 1 ? 'text-status-good' :
+                  coreCoverage >= 0.8 ? 'text-status-warning' : 'text-status-critical'
+                }`}>
+                  {(coreCoverage * 100).toFixed(0)}%
+                </div>
+              </div>
+              <div className="p-3 rounded-lg bg-muted/30 border border-border">
+                <div className="text-xs text-muted-foreground">Total Expense Coverage</div>
+                <div className="font-mono text-xl font-semibold">{(totalCoverage * 100).toFixed(0)}%</div>
+              </div>
+              {shortfall > 0 && (
+                <div className="p-3 rounded-lg bg-status-critical/10 border-status-critical/20">
+                  <div className="text-xs text-muted-foreground">Monthly Shortfall</div>
+                  <div className="font-mono font-semibold text-status-critical">-${shortfall.toLocaleString()}/mo</div>
+                </div>
+              )}
+              {surplus > 0 && (
+                <div className="p-3 rounded-lg bg-status-good/10 border-status-good/20">
+                  <div className="text-xs text-muted-foreground">Surplus for Lifestyle</div>
+                  <div className="font-mono font-semibold text-status-good">+${surplus.toLocaleString()}/mo</div>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Income Sources Table */}
+        {sources.length > 0 && (
+          <div className="space-y-2">
+            <h5 className="text-sm font-medium">Guaranteed Income Sources</h5>
+            <div className="space-y-1">
+              {sources.map((source) => (
+                <div key={source.id} className="flex items-center justify-between text-sm p-2 rounded bg-muted/30">
+                  <div className="flex items-center gap-2">
+                    <span className="font-medium">{source.sourceName || SOURCE_TYPE_LABELS[source.sourceType]}</span>
+                    <Badge variant="outline" className="text-xs">{SOURCE_TYPE_LABELS[source.sourceType]}</Badge>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <span className="font-mono">${source.monthlyAmount.toLocaleString()}/mo</span>
+                    <span className={`text-xs px-2 py-0.5 rounded ${
+                      source.guaranteedForLife ? 'status-good' : 'bg-muted text-muted-foreground'
+                    }`}>
+                      {source.guaranteedForLife ? 'Lifetime ✓' : 'Term'}
+                    </span>
+                    {source.inflationAdj && (
+                      <span className="text-xs px-2 py-0.5 rounded bg-primary/20 text-primary">COLA</span>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Key Insight */}
+        {coreCoverage >= 1 && (
+          <div className="p-3 rounded-lg bg-status-good/10 border border-status-good/20">
+            <div className="flex items-start gap-2">
+              <Check size={16} className="text-status-good mt-0.5 shrink-0" />
+              <div className="text-sm">
+                <span className="font-medium text-status-good">Income Secure:</span>{' '}
+                <span className="text-muted-foreground">
+                  Your essential living expenses are fully funded by guaranteed lifetime income. 
+                  The investment portfolio can be managed for discretionary spending and legacy goals 
+                  without risking your basic lifestyle.
+                </span>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  };
+
   return (
     <Card className="animate-slide-up">
       <CardHeader className="flex flex-row items-center justify-between">
@@ -420,6 +589,7 @@ export function DetailView({
           {renderTaxHarvestingTable()}
           {renderPlanningChecklist()}
           {renderProtectionRisks()}
+          {renderLifetimeIncomeDetail()}
         </div>
       </CardContent>
     </Card>

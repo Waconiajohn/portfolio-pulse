@@ -114,4 +114,5 @@ export const DIAGNOSTIC_CATEGORIES = {
   crisisResilience: { name: 'Crisis Resilience', icon: 'Umbrella' },
   optimization: { name: 'Portfolio Optimization', icon: 'Settings2' },
   planningGaps: { name: 'Planning Gaps', icon: 'ClipboardCheck' },
+  lifetimeIncomeSecurity: { name: 'Lifetime Income Security', icon: 'Wallet' },
 } as const;

@@ -209,6 +209,7 @@ export function PortfolioDashboard() {
                 scoringConfig={scoringConfig}
                 riskTolerance={clientInfo.riskTolerance}
                 clientAge={clientInfo.currentAge}
+                inflationRate={assumptions.inflationRate}
               />
             ) : (
               <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">

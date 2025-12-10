@@ -261,21 +261,21 @@ export function getEducationContent(
 
     protection: {
       title: 'Protection & Vulnerability',
-      whatItMeasures: 'Analyzes your portfolio\'s exposure to five key risk factors: inflation risk, interest rate risk, market crash risk, liquidity risk, and credit risk.',
-      goodVsBad: `GOOD: Score ≥${config.statusThresholds.greenMin} means adequate protection against most scenarios. BAD: Score below ${config.statusThresholds.greenMin} indicates gaps—your portfolio may be vulnerable to inflation, rising rates, or market crashes depending on which areas score poorly.`,
-      interpretation: 'Younger, more aggressive investors can accept higher market crash exposure in exchange for growth. Near-retirees should prioritize protection over growth potential.',
+      whatItMeasures: 'Analyzes your portfolio\'s exposure to six key risk categories: inflation risk, interest rate risk, market crash risk, liquidity risk, geographic concentration, and sequence of returns risk.',
+      goodVsBad: `GOOD: No critical vulnerabilities (scores above ${config.protection.highRiskThreshold}/10). BAD: One or more critical risks detected—your portfolio may be especially vulnerable in specific scenarios.`,
+      interpretation: 'Each risk is scored 1-10. CRITICAL (>${config.protection.highRiskThreshold}) requires attention; HIGH (6-${config.protection.highRiskThreshold}) warrants monitoring. Mitigation strategies are provided for elevated risks.',
       riskToleranceNote: riskTolerance === 'Conservative'
-        ? 'Given your Conservative profile, protection against downside risks should be prioritized.'
+        ? 'Given your Conservative profile, protection against downside risks should be prioritized. Higher crash risk scores are especially concerning.'
         : riskTolerance === 'Aggressive'
-        ? 'Your Aggressive profile allows more crash exposure, but don\'t ignore protection entirely.'
-        : undefined,
+        ? 'Your Aggressive profile allows more crash exposure, but critical vulnerabilities in any category still warrant review.'
+        : 'As a Moderate investor, balance protection and growth—no single category should be at critical levels.',
     },
 
     returnEfficiency: {
       title: 'Return Efficiency (Sharpe Ratio)',
       whatItMeasures: `Sharpe ratio measures return per unit of risk. A higher Sharpe means you're being compensated better for the risk you're taking. Your target: ${config.sharpe.portfolioTarget.toFixed(2)}.`,
-      goodVsBad: `GOOD: Sharpe ≥ ${config.sharpe.portfolioTarget.toFixed(2)} means competitive risk-adjusted returns. BAD: Sharpe below ${config.sharpe.portfolioTarget.toFixed(2)} means either returns are too low or volatility is too high relative to those returns.`,
-      interpretation: `Compare your Sharpe to the S&P 500 historical average (~0.5). Holdings labeled "POOR" (Sharpe < ${(config.sharpe.holdingGoodThreshold - config.sharpe.holdingNeutralOffset).toFixed(2)}) are dragging down overall efficiency and may warrant replacement.`,
+      goodVsBad: `GOOD: Sharpe ≥90% of target (${(config.sharpe.portfolioTarget * 0.9).toFixed(2)}+). BELOW TARGET: 70-90% of target. POOR: <70% of target (${(config.sharpe.portfolioTarget * 0.7).toFixed(2)}) means returns are too low or volatility is too high.`,
+      interpretation: `Holdings are labeled based on how close their individual Sharpe ratios are to your target. POOR holdings (<70% of target) are dragging down portfolio efficiency and may warrant replacement.`,
     },
 
     costAnalysis: {

@@ -59,7 +59,7 @@ export function DiagnosticCard({ name, iconName, categoryKey, result, onViewDeta
               <EducationPopup categoryKey={categoryKey} />
             </div>
           </div>
-          <StatusBadge status={result.status} label={STATUS_LABELS[result.status]} size="sm" />
+          <StatusBadge status={result.status} label={STATUS_LABELS[result.status]} showLabel size="sm" />
         </div>
       </CardHeader>
       <CardContent className="space-y-3">

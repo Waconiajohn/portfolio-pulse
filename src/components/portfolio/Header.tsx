@@ -1,5 +1,6 @@
 import { ClientInfo, PortfolioAnalysis, RiskTolerance, Holding } from '@/types/portfolio';
 import { PortfolioAssumptions } from '@/lib/assumptions';
+import { ScoringConfig, AdviceModel } from '@/lib/scoring-config';
 import { HealthScore } from './HealthScore';
 import { MetricCard } from './MetricCard';
 import { SettingsPanel } from './SettingsPanel';
@@ -17,8 +18,14 @@ interface HeaderProps {
   holdings: Holding[];
   notes: string;
   assumptions: PortfolioAssumptions;
+  scoringConfig: ScoringConfig;
+  adviceModel: AdviceModel;
+  advisorFee: number;
   onClientInfoChange: (info: ClientInfo) => void;
   onAssumptionsChange: (assumptions: PortfolioAssumptions) => void;
+  onScoringConfigChange: (config: ScoringConfig) => void;
+  onAdviceModelChange: (model: AdviceModel) => void;
+  onAdvisorFeeChange: (fee: number) => void;
   onLoadSample: () => void;
 }
 
@@ -30,8 +37,14 @@ export function Header({
   holdings,
   notes,
   assumptions,
+  scoringConfig,
+  adviceModel,
+  advisorFee,
   onClientInfoChange, 
   onAssumptionsChange,
+  onScoringConfigChange,
+  onAdviceModelChange,
+  onAdvisorFeeChange,
   onLoadSample
 }: HeaderProps) {
   
@@ -81,7 +94,16 @@ export function Header({
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
-            <SettingsPanel assumptions={assumptions} onUpdate={onAssumptionsChange} />
+            <SettingsPanel 
+              assumptions={assumptions} 
+              onUpdate={onAssumptionsChange}
+              scoringConfig={scoringConfig}
+              onScoringConfigUpdate={onScoringConfigChange}
+              adviceModel={adviceModel}
+              onAdviceModelChange={onAdviceModelChange}
+              advisorFee={advisorFee}
+              onAdvisorFeeChange={onAdvisorFeeChange}
+            />
           </div>
         </div>
 
@@ -165,8 +187,8 @@ export function Header({
           <MetricCard
             label="Sharpe Ratio"
             value={analysis.sharpeRatio.toFixed(2)}
-            tooltip="Risk-adjusted return metric. Higher is better. Benchmark is 0.50."
-            trend={analysis.sharpeRatio > 0.5 ? 'up' : analysis.sharpeRatio < 0.3 ? 'down' : 'neutral'}
+            tooltip={`Risk-adjusted return metric. Target: ${scoringConfig.sharpe.portfolioTarget.toFixed(2)}`}
+            trend={analysis.sharpeRatio >= scoringConfig.sharpe.portfolioTarget ? 'up' : analysis.sharpeRatio < 0.3 ? 'down' : 'neutral'}
           />
           
           <MetricCard

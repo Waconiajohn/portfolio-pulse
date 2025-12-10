@@ -7,6 +7,7 @@ import {
   Recommendation,
   PlanningChecklist,
   AssetClass,
+  LifetimeIncomeInputs,
 } from '@/types/portfolio';
 import {
   EXPECTED_RETURNS,
@@ -923,6 +924,111 @@ function analyzePlanningGaps(
 }
 
 // ============================================================================
+// 11. LIFETIME INCOME SECURITY
+// ============================================================================
+const DEFAULT_LIFETIME_INCOME_INPUTS: LifetimeIncomeInputs = {
+  coreLivingExpensesMonthly: 0,
+  discretionaryExpensesMonthly: 0,
+  healthcareLongTermCareMonthly: 0,
+  guaranteedSources: [],
+};
+
+function analyzeLifetimeIncomeSecurity(
+  inputs: LifetimeIncomeInputs = DEFAULT_LIFETIME_INCOME_INPUTS,
+  config: ScoringConfig
+): DiagnosticResult {
+  const { coreLivingExpensesMonthly, discretionaryExpensesMonthly, healthcareLongTermCareMonthly, guaranteedSources } = inputs;
+  
+  const totalExpenses = coreLivingExpensesMonthly + discretionaryExpensesMonthly + healthcareLongTermCareMonthly;
+  
+  // Sum guaranteed lifetime income
+  const guaranteedIncome = guaranteedSources
+    .filter(s => s.guaranteedForLife)
+    .reduce((sum, s) => sum + s.monthlyAmount, 0);
+  
+  // Handle case where no data is entered
+  if (coreLivingExpensesMonthly === 0 && guaranteedSources.length === 0) {
+    return {
+      status: 'YELLOW',
+      score: 50,
+      keyFinding: 'Enter monthly expenses and income sources to analyze lifetime income security',
+      headlineMetric: 'No data entered',
+      details: {
+        coreExpensesMonthly: 0,
+        discretionaryMonthly: 0,
+        healthcareMonthly: 0,
+        totalExpensesMonthly: 0,
+        guaranteedLifetimeIncomeMonthly: 0,
+        coreCoveragePct: 0,
+        totalCoveragePct: 0,
+        shortfallCoreMonthly: 0,
+        surplusForLifestyleMonthly: 0,
+        sources: [],
+      },
+    };
+  }
+  
+  // Calculate coverage ratios
+  const coreCoverage = coreLivingExpensesMonthly > 0 
+    ? guaranteedIncome / coreLivingExpensesMonthly 
+    : 0;
+  const totalCoverage = totalExpenses > 0 
+    ? guaranteedIncome / totalExpenses 
+    : 0;
+  
+  // Calculate shortfall/surplus
+  const shortfall = Math.max(0, coreLivingExpensesMonthly - guaranteedIncome);
+  const surplus = Math.max(0, guaranteedIncome - coreLivingExpensesMonthly);
+  
+  // Score based on coverage
+  let score: number;
+  if (coreCoverage >= config.lifetimeIncomeSecurity.coreCoverageGreen) {
+    // 100%+ coverage: score 85-100 with bonus for surplus
+    score = 85 + Math.min(15, (coreCoverage - 1.0) * 30);
+  } else if (coreCoverage >= config.lifetimeIncomeSecurity.coreCoverageYellow) {
+    // 80-100% coverage: score 40-85
+    const range = config.lifetimeIncomeSecurity.coreCoverageGreen - config.lifetimeIncomeSecurity.coreCoverageYellow;
+    score = 40 + ((coreCoverage - config.lifetimeIncomeSecurity.coreCoverageYellow) / range) * 45;
+  } else {
+    // <80% coverage: score 0-40
+    score = (coreCoverage / config.lifetimeIncomeSecurity.coreCoverageYellow) * 40;
+  }
+  
+  const status = getStatus(Math.min(100, Math.max(0, score)), config);
+  
+  // Build key finding
+  let keyFinding: string;
+  if (coreCoverage >= 1.0) {
+    keyFinding = 'Guaranteed lifetime income fully covers your core living expenses for life';
+  } else if (coreCoverage >= 0.8) {
+    keyFinding = `Guaranteed income covers ~${(coreCoverage * 100).toFixed(0)}% of core expenses; the rest depends on your investment portfolio`;
+  } else if (coreCoverage > 0) {
+    keyFinding = `Guaranteed income covers only ${(coreCoverage * 100).toFixed(0)}% of core expenses; lifestyle is heavily dependent on market returns`;
+  } else {
+    keyFinding = 'No guaranteed lifetime income sources identified; full lifestyle risk on portfolio';
+  }
+  
+  return {
+    status,
+    score: Math.min(100, Math.max(0, score)),
+    keyFinding,
+    headlineMetric: `Core covered: ${(coreCoverage * 100).toFixed(0)}% ($${guaranteedIncome.toLocaleString()}/mo vs $${coreLivingExpensesMonthly.toLocaleString()}/mo)`,
+    details: {
+      coreExpensesMonthly: coreLivingExpensesMonthly,
+      discretionaryMonthly: discretionaryExpensesMonthly,
+      healthcareMonthly: healthcareLongTermCareMonthly,
+      totalExpensesMonthly: totalExpenses,
+      guaranteedLifetimeIncomeMonthly: guaranteedIncome,
+      coreCoveragePct: coreCoverage,
+      totalCoveragePct: totalCoverage,
+      shortfallCoreMonthly: shortfall,
+      surplusForLifestyleMonthly: surplus,
+      sources: guaranteedSources,
+    },
+  };
+}
+
+// ============================================================================
 // GENERATE RECOMMENDATIONS
 // ============================================================================
 function generateRecommendations(analysis: Omit<PortfolioAnalysis, 'recommendations'>): Recommendation[] {
@@ -1014,6 +1120,19 @@ function generateRecommendations(analysis: Omit<PortfolioAnalysis, 'recommendati
     }
   }
 
+  // Lifetime Income Security recommendation
+  if (diagnostics.lifetimeIncomeSecurity.status === 'RED') {
+    const details = diagnostics.lifetimeIncomeSecurity.details as { coreCoveragePct: number };
+    recommendations.push({
+      id: `rec-${priority}`,
+      category: 'lifetimeIncomeSecurity',
+      priority: priority++,
+      title: 'Secure guaranteed lifetime income',
+      description: `Only ${((details.coreCoveragePct || 0) * 100).toFixed(0)}% of core expenses covered by guarantees`,
+      impact: 'Eliminate dependence on market returns for basic needs',
+    });
+  }
+
   return recommendations.slice(0, 5);
 }
 
@@ -1026,7 +1145,8 @@ export function analyzePortfolio(
   planningChecklist: PlanningChecklist,
   config: ScoringConfig = DEFAULT_SCORING_CONFIG,
   adviceModel: AdviceModel = 'self-directed',
-  advisorFee: number = 0
+  advisorFee: number = 0,
+  lifetimeIncomeInputs: LifetimeIncomeInputs = DEFAULT_LIFETIME_INCOME_INPUTS
 ): PortfolioAnalysis {
   const metrics = calculatePortfolioMetrics(holdings);
   
@@ -1053,6 +1173,7 @@ export function analyzePortfolio(
         crisisResilience: emptyResult,
         optimization: emptyResult,
         planningGaps: analyzePlanningGaps(planningChecklist, config),
+        lifetimeIncomeSecurity: analyzeLifetimeIncomeSecurity(lifetimeIncomeInputs, config),
       },
       recommendations: [],
     };
@@ -1069,6 +1190,7 @@ export function analyzePortfolio(
     crisisResilience: analyzeCrisisResilience(holdings, metrics.totalValue, config),
     optimization: analyzeOptimization(metrics.expectedReturn, metrics.volatility, metrics.sharpeRatio, metrics.totalFees, metrics.totalValue, config),
     planningGaps: analyzePlanningGaps(planningChecklist, config),
+    lifetimeIncomeSecurity: analyzeLifetimeIncomeSecurity(lifetimeIncomeInputs, config),
   };
 
   // Calculate overall health score

@@ -15,6 +15,7 @@ import {
   Umbrella, 
   Settings2, 
   ClipboardCheck,
+  Wallet,
   FileQuestion,
   LucideIcon
 } from 'lucide-react';
@@ -23,7 +24,7 @@ import { STATUS_LABELS, ScoringConfig, DEFAULT_SCORING_CONFIG } from '@/lib/scor
 
 const iconMap: Record<string, LucideIcon> = {
   Shield, ShieldAlert, TrendingUp, DollarSign, Receipt, 
-  PieChart, BarChart3, Umbrella, Settings2, ClipboardCheck, FileQuestion
+  PieChart, BarChart3, Umbrella, Settings2, ClipboardCheck, Wallet, FileQuestion
 };
 
 interface DiagnosticCardProps {

@@ -1,5 +1,5 @@
 import { useState, useMemo, useCallback } from 'react';
-import { Holding, ClientInfo, PlanningChecklist, PortfolioAnalysis } from '@/types/portfolio';
+import { Holding, ClientInfo, PlanningChecklist, PortfolioAnalysis, LifetimeIncomeInputs } from '@/types/portfolio';
 import { analyzePortfolio } from '@/lib/analysis-engine';
 import { DIAGNOSTIC_CATEGORIES } from '@/lib/constants';
 import { PortfolioAssumptions, DEFAULT_ASSUMPTIONS, saveAssumptions, loadAssumptions } from '@/lib/assumptions';
@@ -19,6 +19,7 @@ import { DiagnosticCard } from './DiagnosticCard';
 import { RecommendationsPanel } from './RecommendationsPanel';
 import { DetailView } from './DetailView';
 import { PlanningChecklistCard } from './PlanningChecklist';
+import { LifetimeIncomePanel } from './LifetimeIncomePanel';
 import { EfficientFrontierChart } from './EfficientFrontierChart';
 import { StressTestChart } from './StressTestChart';
 import { AssetAllocationChart } from './AssetAllocationChart';
@@ -27,7 +28,7 @@ import { CorrelationHeatmap } from '@/components/charts/CorrelationHeatmap';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Textarea } from '@/components/ui/textarea';
-import { LayoutGrid, Table, FileText, LineChart } from 'lucide-react';
+import { LayoutGrid, Table, FileText, LineChart, Wallet } from 'lucide-react';
 import { toast } from 'sonner';
 
 const initialClientInfo: ClientInfo = {
@@ -46,10 +47,18 @@ const initialChecklist: PlanningChecklist = {
   withdrawalStrategy: false,
 };
 
+const initialLifetimeIncomeInputs: LifetimeIncomeInputs = {
+  coreLivingExpensesMonthly: 0,
+  discretionaryExpensesMonthly: 0,
+  healthcareLongTermCareMonthly: 0,
+  guaranteedSources: [],
+};
+
 export function PortfolioDashboard() {
   const [holdings, setHoldings] = useState<Holding[]>([]);
   const [clientInfo, setClientInfo] = useState<ClientInfo>(initialClientInfo);
   const [checklist, setChecklist] = useState<PlanningChecklist>(initialChecklist);
+  const [lifetimeIncomeInputs, setLifetimeIncomeInputs] = useState<LifetimeIncomeInputs>(initialLifetimeIncomeInputs);
   const [notes, setNotes] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState('dashboard');
@@ -64,8 +73,8 @@ export function PortfolioDashboard() {
   }, [baseScoringConfig, clientInfo.riskTolerance]);
 
   const analysis: PortfolioAnalysis = useMemo(() => {
-    return analyzePortfolio(holdings, clientInfo, checklist, scoringConfig, adviceModel, advisorFee);
-  }, [holdings, clientInfo, checklist, scoringConfig, adviceModel, advisorFee]);
+    return analyzePortfolio(holdings, clientInfo, checklist, scoringConfig, adviceModel, advisorFee, lifetimeIncomeInputs);
+  }, [holdings, clientInfo, checklist, scoringConfig, adviceModel, advisorFee, lifetimeIncomeInputs]);
 
   // Compute correlation matrix when holdings change
   const correlationData: CorrelationMatrixResult = useMemo(() => {
@@ -194,6 +203,10 @@ export function PortfolioDashboard() {
                   <PlanningChecklistCard
                     checklist={checklist}
                     onUpdate={setChecklist}
+                  />
+                  <LifetimeIncomePanel
+                    inputs={lifetimeIncomeInputs}
+                    onUpdate={setLifetimeIncomeInputs}
                   />
                 </div>
               </div>

@@ -53,6 +53,7 @@ export interface PortfolioAnalysis {
     crisisResilience: DiagnosticResult;
     optimization: DiagnosticResult;
     planningGaps: DiagnosticResult;
+    lifetimeIncomeSecurity: DiagnosticResult;
   };
   recommendations: Recommendation[];
 }
@@ -91,4 +92,42 @@ export interface BenchmarkData {
 export interface PortfolioVsBenchmarks {
   portfolio: BenchmarkData;
   benchmarks: BenchmarkData[];
+}
+
+// Lifetime Income Security types
+export type GuaranteedIncomeSourceType = 
+  | 'social-security-client' 
+  | 'social-security-spouse'
+  | 'pension-client'
+  | 'pension-spouse'
+  | 'guaranteed-annuity'
+  | 'other-guaranteed';
+
+export interface GuaranteedIncomeSource {
+  id: string;
+  sourceName: string;
+  sourceType: GuaranteedIncomeSourceType;
+  monthlyAmount: number;
+  startAge: number;
+  inflationAdj: boolean;
+  guaranteedForLife: boolean;
+}
+
+export interface LifetimeIncomeInputs {
+  coreLivingExpensesMonthly: number;
+  discretionaryExpensesMonthly: number;
+  healthcareLongTermCareMonthly: number;
+  guaranteedSources: GuaranteedIncomeSource[];
+}
+
+export interface LifetimeIncomeResult {
+  coreExpensesMonthly: number;
+  discretionaryMonthly: number;
+  healthcareMonthly: number;
+  totalExpensesMonthly: number;
+  guaranteedLifetimeIncomeMonthly: number;
+  coreCoveragePct: number;
+  totalCoveragePct: number;
+  shortfallCoreMonthly: number;
+  surplusForLifestyleMonthly: number;
 }

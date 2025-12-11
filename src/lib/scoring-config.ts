@@ -1,4 +1,13 @@
-import { RiskTolerance } from '@/types/portfolio';
+import { RiskTolerance, DiagnosticStatus } from '@/types/portfolio';
+
+// ============================================================================
+// STATUS LABELS
+// ============================================================================
+export const STATUS_LABELS: Record<DiagnosticStatus, string> = {
+  GREEN: 'On Track',
+  YELLOW: 'Needs Review',
+  RED: 'Action Needed',
+};
 
 // ============================================================================
 // ADVICE MODELS

@@ -478,24 +478,28 @@ function analyzePerformanceAndOptimization(
   const absoluteImprovement = optimizedSharpe - sharpeRatio;
   const relativeImprovement = sharpeRatio > 0 ? absoluteImprovement / sharpeRatio : 0;
 
-  // Combined scoring
+  // Combined scoring - stricter approach
   let score: number;
-  // Current efficiency score (60% weight)
+  // Current efficiency score (80% weight) - primary driver
   let efficiencyScore: number;
   if (sharpeRatio >= targetSharpe) {
-    efficiencyScore = 85 + Math.min(15, (sharpeRatio - targetSharpe) * 30);
+    efficiencyScore = 80 + Math.min(20, (sharpeRatio - targetSharpe) * 20);
+  } else if (sharpeRatio100 >= 90) {
+    efficiencyScore = 70 + (sharpeRatio100 - 90);
+  } else if (sharpeRatio100 >= 70) {
+    efficiencyScore = 50 + (sharpeRatio100 - 70);
   } else {
-    efficiencyScore = Math.max(0, sharpeRatio100 * 0.85);
+    efficiencyScore = Math.max(0, sharpeRatio100 * 0.7);
   }
   
-  // Optimization potential score (40% weight) - higher potential = lower score
+  // Optimization potential score (20% weight) - secondary factor
   let optimizationScore: number;
-  if (relativeImprovement < 0.10) optimizationScore = 90;
-  else if (relativeImprovement < 0.15) optimizationScore = 70;
-  else if (relativeImprovement < 0.25) optimizationScore = 50;
+  if (relativeImprovement < 0.05) optimizationScore = 90;
+  else if (relativeImprovement < 0.10) optimizationScore = 70;
+  else if (relativeImprovement < 0.20) optimizationScore = 50;
   else optimizationScore = 30;
   
-  score = Math.round(efficiencyScore * 0.6 + optimizationScore * 0.4);
+  score = Math.round(efficiencyScore * 0.8 + optimizationScore * 0.2);
   score = Math.max(0, Math.min(100, score));
 
   const status = getStatus(score, config);

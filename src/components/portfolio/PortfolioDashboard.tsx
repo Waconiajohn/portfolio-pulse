@@ -16,7 +16,7 @@ import { computeCorrelationMatrix, generateSimulatedReturns, analyzeCorrelationI
 import { Header } from './Header';
 import { HoldingsTable } from './HoldingsTable';
 import { DiagnosticCard } from './DiagnosticCard';
-import { RecommendationsPanel } from './RecommendationsPanel';
+
 import { DetailView } from './DetailView';
 import { PlanningChecklistCard } from './PlanningChecklist';
 import { LifetimeIncomePanel } from './LifetimeIncomePanel';
@@ -241,10 +241,6 @@ export function PortfolioDashboard() {
 
                 {/* Sidebar */}
                 <div className="space-y-6">
-                  <RecommendationsPanel
-                    recommendations={analysis.recommendations}
-                    onNavigateToCategory={(cat) => setSelectedCategory(cat)}
-                  />
                   <PlanningChecklistCard
                     checklist={checklist}
                     onUpdate={setChecklist}

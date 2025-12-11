@@ -20,6 +20,66 @@ export const VOLATILITY: Record<AssetClass, number> = {
   'Other': 0.12,
 };
 
+// Ticker-specific expected returns and volatility estimates
+// Based on historical 10-year data and analyst estimates
+export const TICKER_ESTIMATES: Record<string, { expectedReturn: number; volatility: number }> = {
+  // Large Cap Tech
+  'AAPL': { expectedReturn: 0.12, volatility: 0.28 },
+  'MSFT': { expectedReturn: 0.11, volatility: 0.25 },
+  'GOOGL': { expectedReturn: 0.10, volatility: 0.27 },
+  'GOOG': { expectedReturn: 0.10, volatility: 0.27 },
+  'AMZN': { expectedReturn: 0.13, volatility: 0.32 },
+  'META': { expectedReturn: 0.14, volatility: 0.38 },
+  'NVDA': { expectedReturn: 0.18, volatility: 0.50 },
+  'TSLA': { expectedReturn: 0.15, volatility: 0.55 },
+  // Financials
+  'JPM': { expectedReturn: 0.09, volatility: 0.24 },
+  'BAC': { expectedReturn: 0.08, volatility: 0.28 },
+  'V': { expectedReturn: 0.11, volatility: 0.22 },
+  'MA': { expectedReturn: 0.11, volatility: 0.23 },
+  'GS': { expectedReturn: 0.09, volatility: 0.30 },
+  // Healthcare
+  'JNJ': { expectedReturn: 0.07, volatility: 0.16 },
+  'UNH': { expectedReturn: 0.10, volatility: 0.22 },
+  'PFE': { expectedReturn: 0.06, volatility: 0.22 },
+  'ABBV': { expectedReturn: 0.08, volatility: 0.24 },
+  // Consumer
+  'PG': { expectedReturn: 0.07, volatility: 0.15 },
+  'KO': { expectedReturn: 0.06, volatility: 0.14 },
+  'PEP': { expectedReturn: 0.07, volatility: 0.14 },
+  'WMT': { expectedReturn: 0.08, volatility: 0.18 },
+  'COST': { expectedReturn: 0.10, volatility: 0.20 },
+  'HD': { expectedReturn: 0.10, volatility: 0.22 },
+  // Energy
+  'XOM': { expectedReturn: 0.08, volatility: 0.25 },
+  'CVX': { expectedReturn: 0.08, volatility: 0.24 },
+  // ETFs & Funds
+  'SPY': { expectedReturn: 0.09, volatility: 0.165 },
+  'QQQ': { expectedReturn: 0.11, volatility: 0.22 },
+  'VTI': { expectedReturn: 0.09, volatility: 0.165 },
+  'VOO': { expectedReturn: 0.09, volatility: 0.165 },
+  'IWM': { expectedReturn: 0.08, volatility: 0.20 },
+  'VEA': { expectedReturn: 0.07, volatility: 0.17 },
+  'VWO': { expectedReturn: 0.08, volatility: 0.22 },
+  'EFA': { expectedReturn: 0.07, volatility: 0.17 },
+  // Bonds
+  'BND': { expectedReturn: 0.035, volatility: 0.04 },
+  'AGG': { expectedReturn: 0.035, volatility: 0.04 },
+  'TLT': { expectedReturn: 0.04, volatility: 0.12 },
+  'LQD': { expectedReturn: 0.045, volatility: 0.08 },
+  'HYG': { expectedReturn: 0.055, volatility: 0.10 },
+  // Commodities & Real Estate
+  'GLD': { expectedReturn: 0.05, volatility: 0.15 },
+  'SLV': { expectedReturn: 0.04, volatility: 0.25 },
+  'VNQ': { expectedReturn: 0.07, volatility: 0.20 },
+  // Other common stocks
+  'DIS': { expectedReturn: 0.08, volatility: 0.28 },
+  'NFLX': { expectedReturn: 0.12, volatility: 0.40 },
+  'CRM': { expectedReturn: 0.11, volatility: 0.32 },
+  'INTC': { expectedReturn: 0.06, volatility: 0.30 },
+  'AMD': { expectedReturn: 0.14, volatility: 0.45 },
+};
+
 // Default expense ratios
 export const DEFAULT_EXPENSE_RATIOS = {
   etf: 0.0005,

@@ -12,6 +12,7 @@ import {
 import {
   EXPECTED_RETURNS,
   VOLATILITY,
+  TICKER_ESTIMATES,
   TARGET_VOLATILITY,
   RISK_FREE_RATE,
   DEFAULT_EXPENSE_RATIOS,
@@ -169,18 +170,20 @@ function analyzeReturnEfficiency(
   const sharpeRatio100 = targetSharpe > 0 ? (sharpeRatio / targetSharpe) * 100 : 0;
   
   // Use proportional thresholds based on target
-  // GOOD: >= 90% of target
-  // BELOW TARGET: 70-90% of target  
-  // POOR: < 70% of target
-  const goodPctThreshold = 0.90;  // Must be at least 90% of target to be "Good"
-  const belowTargetPctThreshold = 0.70;  // Between 70-90% = "Below Target", <70% = "Poor"
+  const goodPctThreshold = 0.90;
+  const belowTargetPctThreshold = 0.70;
 
+  // Calculate holding-level Sharpe using ticker-specific data when available
   const holdingEfficiency = holdings.map(h => {
     const value = h.shares * h.currentPrice;
     const weight = value / totalValue;
-    const assetReturn = EXPECTED_RETURNS[h.assetClass] || 0.06;
-    const assetVol = VOLATILITY[h.assetClass] || 0.12;
+    
+    // Use ticker-specific estimates if available, otherwise fall back to asset class
+    const tickerData = TICKER_ESTIMATES[h.ticker.toUpperCase()];
+    const assetReturn = tickerData?.expectedReturn || EXPECTED_RETURNS[h.assetClass] || 0.06;
+    const assetVol = tickerData?.volatility || VOLATILITY[h.assetClass] || 0.12;
     const holdingSharpe = assetVol > 0 ? (assetReturn - RISK_FREE_RATE) / assetVol : 0;
+    const usesTickerData = !!tickerData;
     
     // Proportional labeling based on how close to target
     const pctOfTarget = targetSharpe > 0 ? holdingSharpe / targetSharpe : 0;
@@ -195,8 +198,15 @@ function analyzeReturnEfficiency(
       contribution, 
       weight,
       pctOfTarget: Math.round(pctOfTarget * 100),
+      expectedReturn: assetReturn,
+      volatility: assetVol,
+      usesTickerData,
     };
   });
+
+  // Check how many holdings use ticker-specific vs asset-class data
+  const tickerDataCount = holdingEfficiency.filter(h => h.usesTickerData).length;
+  const assetClassCount = holdingEfficiency.length - tickerDataCount;
 
   // Scoring based on percentage of target achieved
   let score: number;
@@ -209,15 +219,22 @@ function analyzeReturnEfficiency(
 
   const status = getStatus(score, config);
 
-  // Consistent key finding with percentage context
+  // Enhanced key finding with educational context
   let keyFinding: string;
+  const sharpeExplainer = "Sharpe ratio measures return earned per unit of risk – higher is better. Below target means you're taking more volatility than necessary for the returns.";
+  
   if (sharpeRatio >= targetSharpe) {
-    keyFinding = `Portfolio Sharpe ratio ${sharpeRatio.toFixed(2)} meets or exceeds ${targetSharpe.toFixed(2)} target`;
+    keyFinding = `Portfolio Sharpe ${sharpeRatio.toFixed(2)} meets ${targetSharpe.toFixed(2)} target. ${sharpeExplainer}`;
   } else if (sharpeRatio100 < 70) {
-    keyFinding = `Portfolio Sharpe ratio ${sharpeRatio.toFixed(2)} is only ${Math.round(sharpeRatio100)}% of ${targetSharpe.toFixed(2)} target – POOR risk-adjusted returns`;
+    keyFinding = `Portfolio Sharpe ${sharpeRatio.toFixed(2)} is only ${Math.round(sharpeRatio100)}% of target – risk-adjusted returns are POOR. ${sharpeExplainer}`;
   } else {
-    keyFinding = `Portfolio Sharpe ratio ${sharpeRatio.toFixed(2)} is ${Math.round(sharpeRatio100)}% of ${targetSharpe.toFixed(2)} target – below optimal`;
+    keyFinding = `Portfolio Sharpe ${sharpeRatio.toFixed(2)} is ${Math.round(sharpeRatio100)}% of ${targetSharpe.toFixed(2)} target – below optimal. ${sharpeExplainer}`;
   }
+
+  // Note about data sources
+  const dataSourceNote = assetClassCount > 0 
+    ? `Note: ${tickerDataCount} holdings use ticker-specific estimates; ${assetClassCount} use asset class averages.`
+    : undefined;
 
   return {
     status,
@@ -230,9 +247,12 @@ function analyzeReturnEfficiency(
       pctOfTarget: Math.round(sharpeRatio100),
       expectedReturn,
       volatility,
-      holdingEfficiency: holdingEfficiency.slice(0, 10),
+      holdingEfficiency: holdingEfficiency.slice(0, 15),
       goodPctThreshold: Math.round(goodPctThreshold * 100),
       belowTargetPctThreshold: Math.round(belowTargetPctThreshold * 100),
+      tickerDataCount,
+      assetClassCount,
+      dataSourceNote,
     },
   };
 }
@@ -240,6 +260,8 @@ function analyzeReturnEfficiency(
 // ============================================================================
 // 3. COST & FEE ANALYSIS
 // ============================================================================
+import { ADVICE_MODEL_LABELS } from './scoring-config';
+
 function analyzeCosts(
   holdings: Holding[], 
   totalValue: number, 
@@ -256,6 +278,7 @@ function analyzeCosts(
   
   const holdingFees = holdings.map(h => ({
     ticker: h.ticker,
+    name: h.name,
     value: h.shares * h.currentPrice,
     expenseRatio: h.expenseRatio ?? DEFAULT_EXPENSE_RATIOS.etf,
     annualFee: h.shares * h.currentPrice * (h.expenseRatio ?? DEFAULT_EXPENSE_RATIOS.etf),
@@ -275,24 +298,28 @@ function analyzeCosts(
 
   const status = getStatus(score, config);
 
-  // Consistent key finding based on model
+  // Model labels for display
   const modelLabel = adviceModel === 'self-directed' ? 'self-directed' 
     : adviceModel === 'advisor-passive' ? 'passive advisor' : 'tactical advisor';
   
+  // Enhanced key finding with explicit fee breakdown
+  const feeBreakdown = `Advisor: ${formatPct(advisorFee, 2)}% + Products: ${formatPct(productFees, 2)}% = ${formatPct(allInFees, 2)}% total`;
+  const feeEducation = "Fees compound over time – a 1% difference can reduce your portfolio by 20%+ over 20 years.";
+  
   let keyFinding: string;
   if (status === 'GREEN') {
-    keyFinding = `Total fees ${formatPct(allInFees, 2)}% are reasonable for a ${modelLabel} relationship`;
+    keyFinding = `${feeBreakdown}. Fees are reasonable for ${modelLabel} model. ${feeEducation}`;
   } else if (status === 'YELLOW') {
-    keyFinding = `Total fees ${formatPct(allInFees, 2)}% are elevated for a ${modelLabel} relationship (typical: ${formatPct(thresholds.greenMax, 2)}-${formatPct(thresholds.yellowMax, 2)}%)`;
+    keyFinding = `${feeBreakdown}. Fees are elevated for ${modelLabel} (typical max: ${formatPct(thresholds.greenMax, 1)}%). ${feeEducation}`;
   } else {
-    keyFinding = `Total fees ${formatPct(allInFees, 2)}% are HIGH for a ${modelLabel} relationship (above typical ${formatPct(thresholds.yellowMax, 2)}% range)`;
+    keyFinding = `${feeBreakdown}. Fees are HIGH for ${modelLabel} (above ${formatPct(thresholds.yellowMax, 1)}% typical). ${feeEducation}`;
   }
 
   return {
     status,
     score,
     keyFinding,
-    headlineMetric: `Total all-in fees: ${formatPct(allInFees, 2)}% (${ADVICE_MODEL_LABELS[adviceModel]})`,
+    headlineMetric: `Total: ${formatPct(allInFees, 2)}% (Advisor ${formatPct(advisorFee, 2)}% + Products ${formatPct(productFees, 2)}%)`,
     details: {
       productFees,
       advisorFee,
@@ -301,12 +328,10 @@ function analyzeCosts(
       holdingFees,
       adviceModel,
       thresholds,
+      modelLabel,
     },
   };
 }
-
-// Need to import this for the label
-import { ADVICE_MODEL_LABELS } from './scoring-config';
 
 // ============================================================================
 // 4. TAX EFFICIENCY
@@ -445,18 +470,21 @@ function analyzeDiversification(
   else if (tooManyHoldings) label = 'TOO MANY';
   else label = 'ADEQUATE';
 
-  // Consistent key finding
+  // Enhanced key finding with education
+  const diversEducation = "True diversification means no single position or sector can materially impact your portfolio. Even 'diversified' portfolios can be concentrated in their top holdings.";
+  const assetClassCount = Object.values(assetClassWeights).filter(w => w > 0).length;
+  
   let keyFinding: string;
   if (top3TooConcentrated) {
-    keyFinding = `${numHoldings} holdings is ${label.toLowerCase()}, but top 3 positions = ${formatPct(top3Weight, 0)}% – TOO concentrated`;
+    keyFinding = `${numHoldings} holdings is ${label.toLowerCase()}, but top 3 positions = ${formatPct(top3Weight, 0)}% of portfolio – this concentration means a bad quarter for just 3 stocks could significantly impact your wealth. ${diversEducation}`;
   } else if (top10TooConcentrated) {
-    keyFinding = `Top 10 holdings = ${formatPct(top10Weight, 0)}% of portfolio, exceeding ${formatPct(config.diversification.top10ConcentrationMax, 0)}% target`;
+    keyFinding = `Top 10 holdings = ${formatPct(top10Weight, 0)}%, above ${formatPct(config.diversification.top10ConcentrationMax, 0)}% target. ${diversEducation}`;
   } else if (tooFewHoldings) {
-    keyFinding = `Only ${numHoldings} holdings – consider adding positions for better diversification`;
+    keyFinding = `Only ${numHoldings} holdings provides limited diversification. Consider 15-40 positions for better risk distribution. ${diversEducation}`;
   } else if (status === 'GREEN') {
-    keyFinding = `${numHoldings} holdings across ${Object.values(assetClassWeights).filter(w => w > 0).length} asset classes – well diversified`;
+    keyFinding = `${numHoldings} holdings across ${assetClassCount} asset classes provides solid diversification. Top 10 = ${formatPct(top10Weight, 0)}% is within guidelines. ${diversEducation}`;
   } else {
-    keyFinding = 'Diversification could be improved through broader asset class exposure';
+    keyFinding = `Diversification could be improved through broader asset class exposure or reducing concentration in top holdings. ${diversEducation}`;
   }
 
   return {
@@ -544,8 +572,8 @@ function analyzeProtection(
       score: Math.round(Math.max(2, 10 - (commodityWeight * 20) - (stockWeight * 5) - (bondWeight * 2))),
       maxScore: 10,
       severity: 'LOW',
-      description: 'Risk that inflation erodes purchasing power of your portfolio',
-      mitigation: 'Consider TIPS, commodities, real estate, or I-Bonds',
+      description: 'Inflation erodes purchasing power over time. With 3% inflation, $100,000 today buys only $74,000 worth of goods in 10 years.',
+      mitigation: 'Consider TIPS, commodities, real estate, or I-Bonds to maintain purchasing power',
     },
     {
       name: 'interestRateRisk',
@@ -553,8 +581,8 @@ function analyzeProtection(
       score: Math.round(bondWeight * 8 + (bondWeight > 0.4 ? 2 : 0)),
       maxScore: 10,
       severity: 'LOW',
-      description: 'Risk that rising rates reduce bond values',
-      mitigation: 'Shorten bond duration or diversify into short-term bonds',
+      description: 'When interest rates rise, existing bond values fall. Longer-duration bonds are more sensitive to rate changes.',
+      mitigation: 'Shorten bond duration or ladder maturities to reduce rate sensitivity',
     },
     {
       name: 'marketCrashRisk',
@@ -562,8 +590,8 @@ function analyzeProtection(
       score: Math.round(stockWeight * 10),
       maxScore: 10,
       severity: 'LOW',
-      description: 'Risk of significant loss during equity market downturns',
-      mitigation: 'Add defensive assets, bonds, or reduce equity concentration',
+      description: 'Equity markets can drop 30-50% in severe downturns. Recovery can take years, problematic if you need funds soon.',
+      mitigation: 'Add defensive assets (bonds, cash) or consider downside protection strategies',
     },
     {
       name: 'liquidityRisk',
@@ -571,8 +599,8 @@ function analyzeProtection(
       score: Math.round(Math.max(1, 5 - (cashWeight * 20))),
       maxScore: 10,
       severity: 'LOW',
-      description: 'Risk of being unable to access funds when needed',
-      mitigation: 'Maintain emergency fund and adequate cash reserves',
+      description: 'Risk of being forced to sell investments at a loss to meet cash needs during market downturns.',
+      mitigation: 'Maintain 6-12 months emergency fund in cash or money market',
     },
     {
       name: 'concentrationRisk',
@@ -580,8 +608,8 @@ function analyzeProtection(
       score: Math.round((1 - intlWeight) * 6),
       maxScore: 10,
       severity: 'LOW',
-      description: 'Risk from over-reliance on a single market (e.g., US only)',
-      mitigation: 'Add international diversification',
+      description: 'Over-reliance on one country\'s market increases vulnerability to regional economic issues.',
+      mitigation: 'Add 20-40% international diversification to reduce country-specific risk',
     },
     {
       name: 'sequenceRisk',
@@ -589,8 +617,8 @@ function analyzeProtection(
       score: Math.round(stockWeight > 0.7 ? 7 : stockWeight > 0.5 ? 5 : 3),
       maxScore: 10,
       severity: 'LOW',
-      description: 'Risk that poor returns early in retirement deplete your portfolio',
-      mitigation: 'Consider bucket strategy or bond tent near retirement',
+      description: 'Poor returns early in retirement, combined with withdrawals, can permanently deplete a portfolio even if markets later recover.',
+      mitigation: 'BEST SOLUTION: Establish guaranteed lifetime income (annuities, Social Security optimization) sufficient to cover core living expenses. This eliminates sequence risk for essential needs.',
     },
   ];
 
@@ -612,20 +640,22 @@ function analyzeProtection(
 
   const status = getStatus(score, config);
 
-  // Build key finding with specific vulnerabilities
+  // Build key finding with specific vulnerabilities and education
   let keyFinding: string;
+  const protectionEducation = "Protection analysis evaluates six major risk categories. Scores above 7/10 indicate significant exposure requiring attention.";
+  
   if (criticalRisks.length >= 2) {
-    keyFinding = `Portfolio has CRITICAL vulnerabilities: ${criticalRisks.map(r => r.label).join(', ')}`;
+    keyFinding = `CRITICAL vulnerabilities in ${criticalRisks.map(r => r.label).join(' and ')}. ${protectionEducation}`;
   } else if (criticalRisks.length === 1) {
-    keyFinding = `CRITICAL: ${criticalRisks[0].label} (${criticalRisks[0].score}/10) – ${criticalRisks[0].mitigation}`;
+    keyFinding = `CRITICAL: ${criticalRisks[0].label} (${criticalRisks[0].score}/10). ${criticalRisks[0].mitigation}`;
   } else if (highRisks.length >= 2) {
-    keyFinding = `Elevated risks detected: ${highRisks.map(r => r.label).join(', ')}`;
+    keyFinding = `Elevated risk in ${highRisks.map(r => r.label).join(' and ')}. ${protectionEducation}`;
   } else if (highRisks.length === 1) {
-    keyFinding = `Elevated ${highRisks[0].label} (${highRisks[0].score}/10) may warrant attention`;
+    keyFinding = `Elevated ${highRisks[0].label} (${highRisks[0].score}/10). ${highRisks[0].description}`;
   } else if (status === 'GREEN') {
-    keyFinding = 'Portfolio has adequate protection across all major risk categories';
+    keyFinding = `Portfolio shows adequate protection across all six risk categories. ${protectionEducation}`;
   } else {
-    keyFinding = 'Some risk exposures present but within acceptable ranges';
+    keyFinding = `Some risk exposures present but within acceptable ranges. ${protectionEducation}`;
   }
 
   // Build headline metric
@@ -714,35 +744,37 @@ function analyzeRiskAdjusted(
   else if (probability >= config.goalProbability.yellowMin) bandLabel = 'Borderline';
   else bandLabel = 'At Risk';
 
-  // Reframed key finding when core is secured
+  // Reframed key finding when core is secured - with education
+  const goalEducation = "This probability is based on Monte Carlo-style analysis using your current allocation, expected returns, and time horizon. Below 75% typically requires adjustments.";
+  
   let keyFinding: string;
   let goalType: 'full' | 'discretionary-only' = 'full';
   let incomeSecurityNote: string | undefined;
 
   if (coreSecured) {
     goalType = 'discretionary-only';
-    keyFinding = `Essential expenses secured by lifetime income. ${probability.toFixed(0)}% probability for discretionary & legacy goals`;
+    keyFinding = `EXCELLENT: Essential expenses are secured by lifetime income. ${probability.toFixed(0)}% probability for discretionary & legacy goals. Since your basic needs are guaranteed, you can afford more investment risk for growth. ${goalEducation}`;
     incomeSecurityNote = 'Your basic lifestyle is guaranteed regardless of market performance';
   } else if (partiallyCovered && lifetimeIncomeData) {
     const monthlyGap = (1 - lifetimeIncomeData.coreCoveragePct) * (lifetimeIncomeData.discretionaryMonthly + lifetimeIncomeData.healthcareMonthly + lifetimeIncomeData.guaranteedIncomeMonthly / lifetimeIncomeData.coreCoveragePct);
     incomeSecurityNote = `Portfolio must generate ~$${Math.round(monthlyGap).toLocaleString()}/mo to cover remaining core expenses`;
     if (probability >= config.goalProbability.greenMin) {
-      keyFinding = `${probability.toFixed(0)}% probability of reaching goal – comfortable margin`;
+      keyFinding = `${probability.toFixed(0)}% probability of reaching goal – comfortable margin. ${goalEducation}`;
     } else if (probability >= config.goalProbability.yellowMin) {
-      keyFinding = `${probability.toFixed(0)}% probability of reaching goal is BORDERLINE – may require adjustments`;
+      keyFinding = `${probability.toFixed(0)}% probability is BORDERLINE – consider increasing savings, reducing goal, or extending timeline. ${goalEducation}`;
     } else {
-      keyFinding = `${probability.toFixed(0)}% probability of reaching goal is LOW – plan changes likely needed`;
+      keyFinding = `${probability.toFixed(0)}% probability is LOW – plan changes likely needed. Consider guaranteed income to secure essentials. ${goalEducation}`;
     }
   } else {
     incomeSecurityNote = lifetimeIncomeData && lifetimeIncomeData.coreCoveragePct > 0 
       ? 'Full lifestyle risk depends on portfolio performance'
       : undefined;
     if (probability >= config.goalProbability.greenMin) {
-      keyFinding = `${probability.toFixed(0)}% probability of reaching goal – comfortable margin`;
+      keyFinding = `${probability.toFixed(0)}% probability of reaching goal – comfortable margin. ${goalEducation}`;
     } else if (probability >= config.goalProbability.yellowMin) {
-      keyFinding = `${probability.toFixed(0)}% probability of reaching goal is BORDERLINE – may require adjustments`;
+      keyFinding = `${probability.toFixed(0)}% probability is BORDERLINE – consider increasing savings, reducing goal, or extending timeline. ${goalEducation}`;
     } else {
-      keyFinding = `${probability.toFixed(0)}% probability of reaching goal is LOW – plan changes likely needed`;
+      keyFinding = `${probability.toFixed(0)}% probability is LOW – plan changes likely needed. Your entire lifestyle depends on portfolio performance. ${goalEducation}`;
     }
   }
 
@@ -793,32 +825,51 @@ function analyzeCrisisResilience(
   const avgImpact = scenarios.reduce((sum, s) => sum + s.portfolioImpact, 0) / scenarios.length;
   const avgSpImpact = scenarios.reduce((sum, s) => sum + s.spImpact, 0) / scenarios.length;
   
-  // Compare portfolio to S&P
-  const difference = avgImpact - avgSpImpact; // negative = better than S&P
-  const betterThanSp = difference < -config.crisisResilience.betterThanSpThreshold;
-  const similarToSp = Math.abs(difference) <= config.crisisResilience.similarToSpRange;
-  const worseThanSp = difference > config.crisisResilience.betterThanSpThreshold;
+  // Compare portfolio to S&P - portfolio impact and spImpact are both NEGATIVE numbers
+  // Less negative (closer to 0) = better performance = loses less
+  // avgImpact > avgSpImpact means portfolio loses LESS (e.g., -30% > -45%)
+  const portfolioLosesLess = avgImpact > avgSpImpact + config.crisisResilience.betterThanSpThreshold;
+  const portfolioLosesMore = avgImpact < avgSpImpact - config.crisisResilience.betterThanSpThreshold;
+  const similarToSp = !portfolioLosesLess && !portfolioLosesMore;
 
-  // Score based on comparison
+  // Score based on absolute loss severity AND comparison to S&P
+  // Status is based on loss severity, not comparison
+  const avgLossSeverity = Math.abs(avgImpact);
   let score: number;
-  if (betterThanSp) {
-    score = 75 + Math.min(25, Math.abs(difference) * 100);
-  } else if (similarToSp) {
-    score = 50 + (1 - Math.abs(difference) / config.crisisResilience.similarToSpRange) * 20;
+  if (avgLossSeverity < 0.25) {
+    score = 85 + Math.min(15, (0.25 - avgLossSeverity) * 60);
+  } else if (avgLossSeverity < 0.35) {
+    score = 60 + (0.35 - avgLossSeverity) * 250;
+  } else if (avgLossSeverity < 0.45) {
+    score = 40 + (0.45 - avgLossSeverity) * 200;
   } else {
-    score = Math.max(0, 50 - difference * 200);
+    score = Math.max(0, 40 - (avgLossSeverity - 0.45) * 100);
   }
+  
+  // Bonus for beating S&P
+  if (portfolioLosesLess) score = Math.min(100, score + 10);
 
   const status = getStatus(Math.min(100, score), config);
 
-  // FIX: Key finding must match the actual comparison
-  let keyFinding: string;
-  if (betterThanSp) {
-    keyFinding = `In major crashes, portfolio projected to lose LESS than S&P 500 – better downside resilience`;
-  } else if (worseThanSp) {
-    keyFinding = `In major crashes, portfolio projected to fall MORE than S&P 500 – higher drawdown exposure`;
+  // Key finding: accurately describe comparison AND severity
+  const crisisEducation = "Crisis resilience tests how your portfolio might perform in historical crash scenarios like 2008.";
+  
+  let comparisonText: string;
+  if (portfolioLosesLess) {
+    comparisonText = `loses LESS than S&P 500 (avg ${formatPct(avgImpact, 0)}% vs S&P ${formatPct(avgSpImpact, 0)}%)`;
+  } else if (portfolioLosesMore) {
+    comparisonText = `loses MORE than S&P 500 (avg ${formatPct(avgImpact, 0)}% vs S&P ${formatPct(avgSpImpact, 0)}%)`;
   } else {
-    keyFinding = `Crisis performance similar to S&P 500 – consider adding defensive positions`;
+    comparisonText = `performs similarly to S&P 500 in crashes (avg ${formatPct(avgImpact, 0)}%)`;
+  }
+
+  let keyFinding: string;
+  if (avgLossSeverity > 0.40) {
+    keyFinding = `In major crises, portfolio ${comparisonText}. Projected losses are still significant – consider defensive strategies. ${crisisEducation}`;
+  } else if (avgLossSeverity > 0.25) {
+    keyFinding = `In major crises, portfolio ${comparisonText}. Moderate downside protection from diversification. ${crisisEducation}`;
+  } else {
+    keyFinding = `In major crises, portfolio ${comparisonText}. Strong defensive positioning. ${crisisEducation}`;
   }
 
   // Find worst scenario for headline
@@ -834,9 +885,9 @@ function analyzeCrisisResilience(
       avgImpact, 
       avgSpImpact, 
       beta: stockWeight,
-      betterThanSp,
+      portfolioLosesLess,
+      portfolioLosesMore,
       similarToSp,
-      worseThanSp,
     },
   };
 }
@@ -853,60 +904,72 @@ function analyzeOptimization(
   config: ScoringConfig
 ): DiagnosticResult {
   const targetSharpe = config.sharpe.portfolioTarget;
-  const optimizedSharpe = sharpeRatio * 1.15;
-  const improvementPotential = (optimizedSharpe - sharpeRatio) / Math.max(sharpeRatio, 0.01);
+  
+  // Estimate optimized Sharpe through fee reduction and rebalancing
+  const feeReductionPotential = Math.min(totalFees / totalValue * 0.5, 0.005); // Can save up to 0.5% in fees
+  const rebalancingImprovement = volatility > 0.15 ? 0.02 : 0.01; // Better allocation
+  const optimizedReturn = expectedReturn + feeReductionPotential;
+  const optimizedVol = volatility * 0.95; // Modest vol reduction from better diversification
+  const optimizedSharpe = optimizedVol > 0 ? (optimizedReturn - 0.03) / optimizedVol : sharpeRatio;
+  
+  const absoluteImprovement = optimizedSharpe - sharpeRatio;
+  const relativeImprovement = sharpeRatio > 0 ? absoluteImprovement / sharpeRatio : 0;
   
   const recommendations = [];
   if (totalFees / totalValue > 0.005) {
-    recommendations.push('Reduce expense ratios by switching to index funds');
+    recommendations.push('Reduce expense ratios by switching to index funds/ETFs');
   }
   if (volatility > 0.15) {
-    recommendations.push('Add bond allocation to reduce volatility');
+    recommendations.push('Add bond allocation to reduce overall portfolio volatility');
+  }
+  if (sharpeRatio < targetSharpe) {
+    recommendations.push('Rebalance to improve risk-adjusted returns toward target');
   }
 
-  // Score based on: 1) current vs target Sharpe, 2) improvement potential
+  // Score based on improvement potential (not current Sharpe - that's covered in Return Efficiency)
   let score: number;
-  if (sharpeRatio >= targetSharpe) {
-    // At or above target
-    score = 75 + Math.min(25, (sharpeRatio - targetSharpe) * 50);
+  if (relativeImprovement < 0.05) {
+    // Less than 5% improvement possible - already well optimized
+    score = 85 + Math.min(15, (0.05 - relativeImprovement) * 300);
+  } else if (relativeImprovement < 0.15) {
+    // 5-15% improvement possible - moderate room
+    score = 60 + (0.15 - relativeImprovement) * 250;
   } else {
-    // Below target - cannot be GREEN
-    const gap = targetSharpe - sharpeRatio;
-    score = Math.max(0, 70 - gap * 100);
+    // >15% improvement possible - significant optimization needed
+    score = Math.max(20, 60 - (relativeImprovement - 0.15) * 200);
   }
-
-  // Also penalize if significant improvement is possible
-  if (improvementPotential > 0.15) score = Math.min(score, 65);
-  if (improvementPotential > 0.20) score = Math.min(score, 50);
 
   const status = getStatus(score, config);
 
-  // Consistent key finding - if below target, cannot say "Good"
+  // Key finding focuses on IMPROVEMENT POTENTIAL, not current Sharpe
+  const optEducation = "Optimization analyzes potential gains from fee reduction, rebalancing, and better diversification.";
+  
   let keyFinding: string;
-  if (sharpeRatio >= targetSharpe && improvementPotential < 0.10) {
-    keyFinding = 'Portfolio is near-optimal – limited room for improvement';
-  } else if (sharpeRatio < targetSharpe) {
-    keyFinding = `Current Sharpe ${sharpeRatio.toFixed(2)} is below target ${targetSharpe.toFixed(2)} – optimization could materially improve returns`;
+  if (relativeImprovement < 0.05) {
+    keyFinding = `Portfolio is well-optimized – less than 5% improvement possible. ${optEducation}`;
+  } else if (relativeImprovement < 0.15) {
+    keyFinding = `Moderate optimization opportunity: ~${formatPct(relativeImprovement, 0)}% Sharpe improvement possible through ${recommendations[0]?.toLowerCase() || 'rebalancing'}. ${optEducation}`;
   } else {
-    keyFinding = `${formatPct(improvementPotential, 0)}% Sharpe improvement possible through rebalancing`;
+    keyFinding = `Significant optimization opportunity: ~${formatPct(relativeImprovement, 0)}% Sharpe improvement possible. ${recommendations.slice(0, 2).join('; ')}. ${optEducation}`;
   }
 
   return {
     status,
     score: Math.max(0, score),
     keyFinding,
-    headlineMetric: `Sharpe: ${sharpeRatio.toFixed(2)} current → ${optimizedSharpe.toFixed(2)} optimized (Target: ${targetSharpe.toFixed(2)})`,
+    headlineMetric: `Improvement potential: +${formatPct(relativeImprovement, 0)}% (${sharpeRatio.toFixed(2)} → ${optimizedSharpe.toFixed(2)})`,
     details: {
       currentSharpe: sharpeRatio,
       targetSharpe,
       optimizedSharpe,
-      improvementPotential,
+      absoluteImprovement,
+      relativeImprovement,
       recommendations,
       beforeAfter: {
         current: { expectedReturn, volatility, sharpeRatio, fees: totalFees },
         optimized: { 
-          expectedReturn: expectedReturn * 1.05, 
-          volatility: volatility * 0.95, 
+          expectedReturn: optimizedReturn, 
+          volatility: optimizedVol, 
           sharpeRatio: optimizedSharpe, 
           fees: totalFees * 0.5 
         },
@@ -1024,8 +1087,8 @@ function analyzeLifetimeIncomeSecurity(
     return {
       status: 'YELLOW',
       score: 50,
-      keyFinding: 'Enter monthly expenses and income sources to analyze lifetime income security',
-      headlineMetric: 'No data entered',
+      keyFinding: 'Use the "Lifetime Income & Expenses" panel (right sidebar, scroll down) to enter your monthly living expenses and guaranteed income sources (Social Security, pensions, annuities). This analysis shows how much of your lifestyle is protected from market risk.',
+      headlineMetric: 'Enter expenses in sidebar →',
       details: {
         coreExpensesMonthly: 0,
         discretionaryMonthly: 0,
@@ -1037,6 +1100,7 @@ function analyzeLifetimeIncomeSecurity(
         shortfallCoreMonthly: 0,
         surplusForLifestyleMonthly: 0,
         sources: [],
+        needsDataEntry: true,
       },
     };
   }
@@ -1069,16 +1133,21 @@ function analyzeLifetimeIncomeSecurity(
   
   const status = getStatus(Math.min(100, Math.max(0, score)), config);
   
-  // Build key finding
+  // Build key finding with education
+  const incomeEducation = "Lifetime Income Security measures how much of your essential expenses are covered by income you can't outlive (Social Security, pensions, annuities). 100%+ coverage means market volatility can't threaten your basic lifestyle.";
+  
   let keyFinding: string;
   if (coreCoverage >= 1.0) {
-    keyFinding = 'Guaranteed lifetime income fully covers your core living expenses for life';
+    const surplusPct = ((coreCoverage - 1) * 100).toFixed(0);
+    keyFinding = `EXCELLENT: Guaranteed income ($${guaranteedIncome.toLocaleString()}/mo) fully covers core expenses ($${coreLivingExpensesMonthly.toLocaleString()}/mo) with ${surplusPct}% surplus. Your essential lifestyle is bulletproof – market crashes cannot threaten your basic needs. ${incomeEducation}`;
   } else if (coreCoverage >= 0.8) {
-    keyFinding = `Guaranteed income covers ~${(coreCoverage * 100).toFixed(0)}% of core expenses; the rest depends on your investment portfolio`;
+    const gap = coreLivingExpensesMonthly - guaranteedIncome;
+    keyFinding = `Guaranteed income covers ${(coreCoverage * 100).toFixed(0)}% of core expenses. The remaining $${gap.toLocaleString()}/mo gap depends on portfolio performance. Consider additional guaranteed income to fully secure essentials. ${incomeEducation}`;
   } else if (coreCoverage > 0) {
-    keyFinding = `Guaranteed income covers only ${(coreCoverage * 100).toFixed(0)}% of core expenses; lifestyle is heavily dependent on market returns`;
+    const gap = coreLivingExpensesMonthly - guaranteedIncome;
+    keyFinding = `WARNING: Guaranteed income covers only ${(coreCoverage * 100).toFixed(0)}% of core expenses. A $${gap.toLocaleString()}/mo shortfall must come from portfolio withdrawals, exposing your basic lifestyle to market risk. ${incomeEducation}`;
   } else {
-    keyFinding = 'No guaranteed lifetime income sources identified; full lifestyle risk on portfolio';
+    keyFinding = `CRITICAL: No guaranteed lifetime income identified. Your entire lifestyle depends on portfolio performance and market conditions. Consider Social Security optimization and/or annuities. ${incomeEducation}`;
   }
   
   return {

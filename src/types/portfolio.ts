@@ -68,14 +68,20 @@ export interface Recommendation {
   impact: string;
 }
 
+export type PlanningPriority = 'ASAP' | 'Soon' | 'Routine';
+
 export interface PlanningChecklist {
   willTrust: boolean;
-  beneficiaryReview: boolean;
+  healthcareDirectives: boolean;
   poaDirectives: boolean;
-  digitalAssetPlan: boolean;
-  insuranceCoverage: boolean;
   emergencyFund: boolean;
+  beneficiaryReview: boolean;
+  executorDesignation: boolean;
+  guardianDesignation: boolean;
+  insuranceCoverage: boolean;
+  digitalAssetPlan: boolean;
   withdrawalStrategy: boolean;
+  investmentPolicyStatement: boolean;
 }
 
 // Benchmark comparison types

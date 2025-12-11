@@ -348,6 +348,26 @@ function analyzeTaxEfficiency(
     keyFinding = 'Review asset location for potential tax optimization';
   }
 
+  // Build full holdings data for detail view
+  const allHoldingsWithGainLoss = holdings.map(h => {
+    const value = h.shares * h.currentPrice;
+    const costValue = h.shares * h.costBasis;
+    const gainLoss = value - costValue;
+    const isTaxable = h.accountType === 'Taxable';
+    const hasLoss = gainLoss < 0;
+    
+    return {
+      ticker: h.ticker,
+      name: h.name,
+      accountType: h.accountType,
+      value,
+      costValue,
+      gainLoss,
+      gainLossPct: costValue > 0 ? (gainLoss / costValue) * 100 : 0,
+      harvestable: isTaxable && hasLoss,
+    };
+  }).sort((a, b) => a.gainLoss - b.gainLoss); // Sort by gain/loss (losses first)
+
   return {
     status,
     score,
@@ -360,10 +380,12 @@ function analyzeTaxEfficiency(
         unrealizedLoss: h.shares * (h.costBasis - h.currentPrice),
         harvestable: h.accountType === 'Taxable',
       })),
+      allHoldings: allHoldingsWithGainLoss,
       totalHarvestable,
       estimatedTaxSavings,
       inefficientInTaxable,
       taxableHoldingsCount: taxableHoldings.length,
+      totalHoldingsCount: holdings.length,
     },
   };
 }
@@ -902,12 +924,16 @@ function analyzePlanningGaps(
 ): DiagnosticResult {
   const checklistItems = {
     willTrust: { name: 'Will/Trust', critical: true },
-    beneficiaryReview: { name: 'Beneficiary Review', critical: false },
-    poaDirectives: { name: 'POA/Healthcare Directives', critical: true },
-    digitalAssetPlan: { name: 'Digital Asset Plan', critical: false },
-    insuranceCoverage: { name: 'Insurance Coverage', critical: false },
+    healthcareDirectives: { name: 'Healthcare Directives', critical: true },
+    poaDirectives: { name: 'Power of Attorney', critical: true },
     emergencyFund: { name: 'Emergency Fund', critical: true },
+    beneficiaryReview: { name: 'Beneficiary Review', critical: false },
+    executorDesignation: { name: 'Executor Designation', critical: false },
+    guardianDesignation: { name: 'Guardian Designation', critical: false },
+    insuranceCoverage: { name: 'Insurance Review', critical: false },
+    digitalAssetPlan: { name: 'Digital Asset Plan', critical: false },
     withdrawalStrategy: { name: 'Withdrawal Strategy', critical: false },
+    investmentPolicyStatement: { name: 'Investment Policy Statement', critical: false },
   };
 
   const items = Object.entries(checklist) as [keyof PlanningChecklist, boolean][];

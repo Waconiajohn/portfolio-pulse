@@ -8,6 +8,7 @@ import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveCo
 import { ScoringConfig, DEFAULT_SCORING_CONFIG, getEducationContent } from '@/lib/scoring-config';
 import { Badge } from '@/components/ui/badge';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
+import { cn } from '@/lib/utils';
 
 interface DetailViewProps {
   name: string;
@@ -284,6 +285,118 @@ export function DetailView({
     );
   };
 
+  const renderTaxEfficiencyFullTable = () => {
+    const allHoldings = details.allHoldings as Array<{
+      ticker: string;
+      name: string;
+      accountType: string;
+      value: number;
+      gainLoss: number;
+      gainLossPct: number;
+      harvestable: boolean;
+    }> | undefined;
+
+    if (!allHoldings || allHoldings.length === 0) return null;
+
+    const totalHarvestable = details.totalHarvestable as number || 0;
+    const estimatedTaxSavings = details.estimatedTaxSavings as number || 0;
+
+    return (
+      <div className="space-y-3 col-span-2">
+        <h4 className="text-sm font-medium">All Holdings - Gain/Loss & Harvestable Status</h4>
+        
+        {/* Education callout */}
+        <div className="p-3 rounded-lg bg-primary/10 border border-primary/20 flex items-start gap-2">
+          <Info size={16} className="text-primary mt-0.5 shrink-0" />
+          <div className="text-xs text-muted-foreground">
+            <span className="font-medium text-foreground">Tax-loss harvesting</span> applies ONLY to taxable/brokerage accounts, not IRAs or 401(k)s. 
+            Losses in qualified accounts cannot be deducted. Watch for wash sale rules (no repurchase within 30 days).
+          </div>
+        </div>
+
+        {/* Summary stats */}
+        {totalHarvestable > 0 && (
+          <div className="grid grid-cols-2 gap-3">
+            <div className="p-3 rounded-lg bg-status-good/10 border border-status-good/20">
+              <div className="text-xs text-muted-foreground">Harvestable Losses</div>
+              <div className="font-mono font-semibold text-status-good">
+                ${totalHarvestable.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+              </div>
+            </div>
+            <div className="p-3 rounded-lg bg-status-good/10 border border-status-good/20">
+              <div className="text-xs text-muted-foreground">Est. Tax Savings (25%)</div>
+              <div className="font-mono font-semibold text-status-good">
+                ${estimatedTaxSavings.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Full holdings table */}
+        <div className="border rounded-lg overflow-hidden">
+          <table className="w-full text-sm">
+            <thead className="bg-muted/50">
+              <tr>
+                <th className="text-left p-2 font-medium">Holding</th>
+                <th className="text-left p-2 font-medium">Account</th>
+                <th className="text-right p-2 font-medium">Value</th>
+                <th className="text-right p-2 font-medium">Gain/Loss</th>
+                <th className="text-center p-2 font-medium">Harvestable?</th>
+              </tr>
+            </thead>
+            <tbody>
+              {allHoldings.map((h, idx) => (
+                <tr 
+                  key={`${h.ticker}-${idx}`} 
+                  className={cn(
+                    'border-t border-border',
+                    h.harvestable && 'bg-status-good/5'
+                  )}
+                >
+                  <td className="p-2">
+                    <div className="font-mono font-medium">{h.ticker}</div>
+                    {h.name && <div className="text-xs text-muted-foreground truncate max-w-[150px]">{h.name}</div>}
+                  </td>
+                  <td className="p-2">
+                    <Badge variant="outline" className="text-xs">
+                      {h.accountType}
+                    </Badge>
+                  </td>
+                  <td className="p-2 text-right font-mono">
+                    ${h.value.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                  </td>
+                  <td className={cn(
+                    'p-2 text-right font-mono',
+                    h.gainLoss >= 0 ? 'value-positive' : 'value-negative'
+                  )}>
+                    <div>{h.gainLoss >= 0 ? '+' : ''}{h.gainLoss.toLocaleString(undefined, { maximumFractionDigits: 0 })}</div>
+                    <div className="text-xs opacity-70">
+                      ({h.gainLoss >= 0 ? '+' : ''}{h.gainLossPct.toFixed(1)}%)
+                    </div>
+                  </td>
+                  <td className="p-2 text-center">
+                    {h.gainLoss < 0 ? (
+                      <span className={cn(
+                        'text-xs px-2 py-1 rounded',
+                        h.harvestable 
+                          ? 'status-good font-medium' 
+                          : 'bg-muted text-muted-foreground'
+                      )}>
+                        {h.harvestable ? '✓ Yes' : 'N/A (Qualified)'}
+                      </span>
+                    ) : (
+                      <span className="text-xs text-muted-foreground">—</span>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    );
+  };
+
   const renderTaxHarvestingTable = () => {
     if (!details.lossCandidates) return null;
     
@@ -298,7 +411,7 @@ export function DetailView({
 
     return (
       <div className="space-y-2">
-        <h4 className="text-sm font-medium">Tax-Loss Harvesting Candidates</h4>
+        <h4 className="text-sm font-medium">Tax-Loss Harvesting Candidates (Summary)</h4>
         <div className="text-xs text-muted-foreground mb-2">
           Only losses in taxable accounts can be harvested. Watch for wash sale rules when replacing positions.
         </div>
@@ -906,6 +1019,7 @@ export function DetailView({
           {renderFeeBreakdown()}
           {renderEfficiencyTable()}
           {renderScenarios()}
+          {renderTaxEfficiencyFullTable()}
           {renderTaxHarvestingTable()}
           {renderPlanningChecklist()}
           {renderProtectionRisks()}

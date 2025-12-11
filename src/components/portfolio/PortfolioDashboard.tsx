@@ -39,12 +39,16 @@ const initialClientInfo: ClientInfo = {
 
 const initialChecklist: PlanningChecklist = {
   willTrust: false,
-  beneficiaryReview: false,
+  healthcareDirectives: false,
   poaDirectives: false,
-  digitalAssetPlan: false,
-  insuranceCoverage: false,
   emergencyFund: false,
+  beneficiaryReview: false,
+  executorDesignation: false,
+  guardianDesignation: false,
+  insuranceCoverage: false,
+  digitalAssetPlan: false,
   withdrawalStrategy: false,
+  investmentPolicyStatement: false,
 };
 
 const initialLifetimeIncomeInputs: LifetimeIncomeInputs = {
@@ -113,12 +117,16 @@ export function PortfolioDashboard() {
     });
     setChecklist({
       willTrust: true,
-      beneficiaryReview: true,
+      healthcareDirectives: true,
       poaDirectives: true,
-      digitalAssetPlan: false,
-      insuranceCoverage: true,
       emergencyFund: true,
+      beneficiaryReview: true,
+      executorDesignation: false,
+      guardianDesignation: false,
+      insuranceCoverage: true,
+      digitalAssetPlan: false,
       withdrawalStrategy: false,
+      investmentPolicyStatement: false,
     });
     setLifetimeIncomeInputs({
       coreLivingExpensesMonthly: 6500,

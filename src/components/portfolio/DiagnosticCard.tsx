@@ -81,8 +81,11 @@ export function DiagnosticCard({
         <p className="text-sm text-muted-foreground line-clamp-2">
           {result.keyFinding}
         </p>
-        <div className="font-mono text-sm font-medium text-foreground">
-          {result.headlineMetric}
+        <div>
+          <div className="text-[10px] uppercase tracking-wider text-muted-foreground mb-0.5">Primary Metric</div>
+          <div className="font-mono text-sm font-medium text-foreground">
+            {result.headlineMetric}
+          </div>
         </div>
         <Button 
           variant="ghost" 

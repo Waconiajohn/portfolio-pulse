@@ -73,10 +73,10 @@ export interface ScoringConfig {
     similarToSpRange: number;       // Within this % of S&P = similar
   };
 
-  // Planning Gaps
+  // Planning Gaps (11 items total)
   planningGaps: {
-    greenMinComplete: number;  // e.g., 6 of 7 = GREEN
-    yellowMinComplete: number; // e.g., 4 of 7 = YELLOW
+    greenMinComplete: number;  // e.g., 9 of 11 = GREEN
+    yellowMinComplete: number; // e.g., 6 of 11 = YELLOW
     criticalItems: string[];   // Items that trigger extra penalty if missing
   };
 
@@ -225,9 +225,9 @@ export const DEFAULT_SCORING_CONFIG: ScoringConfig = {
   },
 
   planningGaps: {
-    greenMinComplete: 6,
-    yellowMinComplete: 4,
-    criticalItems: ['willTrust', 'poaDirectives', 'emergencyFund'],
+    greenMinComplete: 9,
+    yellowMinComplete: 6,
+    criticalItems: ['willTrust', 'healthcareDirectives', 'poaDirectives', 'emergencyFund'],
   },
 
   protection: {
@@ -343,9 +343,9 @@ export function getEducationContent(
 
     planningGaps: {
       title: 'Planning Gaps',
-      whatItMeasures: 'Tracks completion of essential planning items: estate documents, beneficiary reviews, healthcare directives, insurance, emergency fund, and withdrawal strategy.',
-      goodVsBad: `GOOD: ${config.planningGaps.greenMinComplete}+ of 7 items complete, especially critical items (will, POA, emergency fund). BAD: Critical gaps in estate planning or no emergency fund leave you exposed to unnecessary risk.`,
-      interpretation: 'Financial planning is more than investments. Missing documents can cause family hardship and unnecessary costs during difficult times.',
+      whatItMeasures: 'Tracks completion of 11 essential planning items: estate documents, healthcare directives, POA, beneficiaries, executor/guardian designations, insurance, emergency fund, withdrawal strategy, and investment policy statement.',
+      goodVsBad: `GOOD: ${config.planningGaps.greenMinComplete}+ of 11 items complete, especially critical items (will, healthcare directives, POA, emergency fund). BAD: Critical gaps in estate planning or no emergency fund leave you exposed to unnecessary risk.`,
+      interpretation: 'Financial planning is more than investments. Missing documents can cause family hardship and unnecessary costs during difficult times. ASAP items should be addressed immediately.',
     },
 
     lifetimeIncomeSecurity: {

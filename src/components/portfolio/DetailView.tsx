@@ -4,6 +4,7 @@ import { StatusBadge } from './StatusBadge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { X, Check, AlertCircle, Info, TrendingUp } from 'lucide-react';
+import { Checkbox } from '@/components/ui/checkbox';
 import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, AreaChart, Area, ReferenceLine, Legend } from 'recharts';
 import { ScoringConfig, DEFAULT_SCORING_CONFIG, getEducationContent } from '@/lib/scoring-config';
 import { Badge } from '@/components/ui/badge';
@@ -19,6 +20,8 @@ interface DetailViewProps {
   riskTolerance?: RiskTolerance;
   clientAge?: number;
   inflationRate?: number;
+  checklist?: PlanningChecklist;
+  onChecklistUpdate?: (checklist: PlanningChecklist) => void;
 }
 
 const CHART_COLORS = [
@@ -38,7 +41,9 @@ export function DetailView({
   scoringConfig = DEFAULT_SCORING_CONFIG,
   riskTolerance = 'Moderate',
   clientAge = 62,
-  inflationRate = 0.025
+  inflationRate = 0.025,
+  checklist,
+  onChecklistUpdate
 }: DetailViewProps) {
   const { details } = result;
   const educationContent = getEducationContent(scoringConfig, riskTolerance);
@@ -442,52 +447,80 @@ export function DetailView({
   };
 
   const renderPlanningChecklist = () => {
-    if (!details.checklistItems || !details.checklist) return null;
+    if (!details.checklistItems || !checklist || !onChecklistUpdate) return null;
     
-    const checklistItems = details.checklistItems as Record<string, { name: string; critical: boolean }>;
-    const checklist = details.checklist as PlanningChecklist;
+    const checklistItems = details.checklistItems as Record<string, { name: string; description: string; critical: boolean; priority: string }>;
 
-    const items = Object.entries(checklistItems).map(([key, config]) => ({
-      key,
-      name: config.name,
-      critical: config.critical,
-      completed: checklist[key as keyof PlanningChecklist] || false,
-    }));
+    const handleToggle = (key: string) => {
+      onChecklistUpdate({ ...checklist, [key]: !checklist[key as keyof PlanningChecklist] });
+    };
+
+    const priorityOrder = ['ASAP', 'Soon', 'Routine'];
+    const groupedItems = priorityOrder.map(priority => ({
+      priority,
+      items: Object.entries(checklistItems)
+        .filter(([_, config]) => config.priority === priority)
+        .map(([key, config]) => ({
+          key,
+          name: config.name,
+          description: config.description,
+          critical: config.critical,
+          completed: checklist[key as keyof PlanningChecklist] || false,
+        }))
+    })).filter(group => group.items.length > 0);
+
+    const priorityConfig: Record<string, { label: string; className: string }> = {
+      'ASAP': { label: 'ASAP', className: 'bg-status-critical/20 text-status-critical border-status-critical/30' },
+      'Soon': { label: 'Soon', className: 'bg-status-warning/20 text-status-warning border-status-warning/30' },
+      'Routine': { label: 'Routine', className: 'bg-muted text-muted-foreground border-border' },
+    };
 
     return (
-      <div className="space-y-2 col-span-2">
-        <h4 className="text-sm font-medium">Planning Checklist Details</h4>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-          {items.map(item => (
-            <div 
-              key={item.key} 
-              className={`flex items-center justify-between p-3 rounded border ${
-                item.completed 
-                  ? 'bg-status-good/5 border-status-good/20' 
-                  : item.critical 
-                  ? 'bg-status-critical/5 border-status-critical/20' 
-                  : 'bg-muted/30 border-border'
-              }`}
-            >
-              <div className="flex items-center gap-2">
-                {item.completed ? (
-                  <Check size={16} className="text-status-good" />
-                ) : (
-                  <AlertCircle size={16} className={item.critical ? 'text-status-critical' : 'text-muted-foreground'} />
-                )}
-                <span className="text-sm">{item.name}</span>
-              </div>
-              <div className="flex items-center gap-2">
-                {item.critical && !item.completed && (
-                  <Badge variant="destructive" className="text-xs">Critical</Badge>
-                )}
-                <span className={`text-xs ${item.completed ? 'text-status-good' : 'text-muted-foreground'}`}>
-                  {item.completed ? 'Complete' : 'Missing'}
-                </span>
-              </div>
+      <div className="space-y-4 col-span-2">
+        <h4 className="text-sm font-medium">Planning Checklist</h4>
+        {groupedItems.map(({ priority, items }) => (
+          <div key={priority} className="space-y-2">
+            <div className="flex items-center gap-2">
+              <Badge variant="outline" className={cn('text-xs', priorityConfig[priority]?.className)}>
+                {priorityConfig[priority]?.label || priority}
+              </Badge>
+              <span className="text-xs text-muted-foreground">
+                {items.filter(item => item.completed).length}/{items.length}
+              </span>
             </div>
-          ))}
-        </div>
+            <div className="space-y-1">
+              {items.map(item => (
+                <div 
+                  key={item.key} 
+                  className={cn(
+                    'flex items-start gap-3 p-3 rounded border cursor-pointer transition-colors hover:bg-muted/50',
+                    item.completed 
+                      ? 'bg-status-good/5 border-status-good/20 opacity-60' 
+                      : item.critical 
+                      ? 'bg-status-critical/5 border-status-critical/20' 
+                      : 'bg-muted/30 border-border'
+                  )}
+                  onClick={() => handleToggle(item.key)}
+                >
+                  <Checkbox
+                    checked={item.completed}
+                    onCheckedChange={() => handleToggle(item.key)}
+                    className="mt-0.5"
+                  />
+                  <div className="flex-1 min-w-0">
+                    <div className={cn('font-medium text-sm', item.completed && 'line-through')}>
+                      {item.name}
+                    </div>
+                    <div className="text-xs text-muted-foreground">{item.description}</div>
+                  </div>
+                  {item.critical && !item.completed && (
+                    <Badge variant="destructive" className="text-[10px] px-1.5 py-0">Critical</Badge>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        ))}
       </div>
     );
   };

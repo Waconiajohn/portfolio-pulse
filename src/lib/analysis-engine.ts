@@ -834,17 +834,17 @@ function analyzePlanningGaps(
   config: ScoringConfig
 ): DiagnosticResult {
   const checklistItems = {
-    willTrust: { name: 'Will/Trust', critical: true },
-    healthcareDirectives: { name: 'Healthcare Directives', critical: true },
-    poaDirectives: { name: 'Power of Attorney', critical: true },
-    emergencyFund: { name: 'Emergency Fund', critical: true },
-    beneficiaryReview: { name: 'Beneficiary Review', critical: false },
-    executorDesignation: { name: 'Executor Designation', critical: false },
-    guardianDesignation: { name: 'Guardian Designation', critical: false },
-    insuranceCoverage: { name: 'Insurance Review', critical: false },
-    digitalAssetPlan: { name: 'Digital Asset Plan', critical: false },
-    withdrawalStrategy: { name: 'Withdrawal Strategy', critical: false },
-    investmentPolicyStatement: { name: 'Investment Policy Statement', critical: false },
+    willTrust: { name: 'Will/Trust', description: 'Estate planning documents in place', critical: true, priority: 'ASAP' },
+    healthcareDirectives: { name: 'Healthcare Directives', description: 'Advance directives and living will', critical: true, priority: 'ASAP' },
+    poaDirectives: { name: 'Power of Attorney', description: 'Financial and durable POA documents', critical: true, priority: 'ASAP' },
+    emergencyFund: { name: 'Emergency Fund', description: '3-6 months expenses in liquid savings', critical: true, priority: 'ASAP' },
+    beneficiaryReview: { name: 'Beneficiary Review', description: 'All accounts have correct beneficiaries', critical: false, priority: 'Soon' },
+    executorDesignation: { name: 'Executor Designation', description: 'Named executor for estate administration', critical: false, priority: 'Soon' },
+    guardianDesignation: { name: 'Guardian Designation', description: 'Guardians named for minor dependents', critical: false, priority: 'Soon' },
+    withdrawalStrategy: { name: 'Withdrawal Strategy', description: 'Retirement income plan documented', critical: false, priority: 'Soon' },
+    insuranceCoverage: { name: 'Insurance Review', description: 'Life, disability, and LTC coverage reviewed', critical: false, priority: 'Routine' },
+    digitalAssetPlan: { name: 'Digital Asset Plan', description: 'Plan for digital accounts and cryptocurrencies', critical: false, priority: 'Routine' },
+    investmentPolicyStatement: { name: 'Investment Policy Statement', description: 'Written IPS documenting strategy and goals', critical: false, priority: 'Routine' },
   };
 
   const items = Object.entries(checklist) as [keyof PlanningChecklist, boolean][];

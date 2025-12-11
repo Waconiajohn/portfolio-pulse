@@ -18,7 +18,6 @@ import { HoldingsTable } from './HoldingsTable';
 import { DiagnosticCard } from './DiagnosticCard';
 
 import { DetailView } from './DetailView';
-import { PlanningChecklistCard } from './PlanningChecklist';
 import { LifetimeIncomePanel } from './LifetimeIncomePanel';
 import { EfficientFrontierChart } from './EfficientFrontierChart';
 import { StressTestChart } from './StressTestChart';
@@ -218,6 +217,8 @@ export function PortfolioDashboard() {
                 riskTolerance={clientInfo.riskTolerance}
                 clientAge={clientInfo.currentAge}
                 inflationRate={assumptions.inflationRate}
+                checklist={checklist}
+                onChecklistUpdate={setChecklist}
               />
             ) : (
               <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
@@ -241,10 +242,6 @@ export function PortfolioDashboard() {
 
                 {/* Sidebar */}
                 <div className="space-y-6">
-                  <PlanningChecklistCard
-                    checklist={checklist}
-                    onUpdate={setChecklist}
-                  />
                   <LifetimeIncomePanel
                     inputs={lifetimeIncomeInputs}
                     onUpdate={setLifetimeIncomeInputs}

@@ -17,8 +17,8 @@ const SCENARIOS = [
 
 export function StressTestChart({ analysis }: StressTestChartProps) {
   const data = useMemo(() => {
-    const crisisDetails = analysis.diagnostics.crisisResilience.details;
-    const scenarios = crisisDetails.scenarios as Array<{ name: string; portfolioImpact: number; spImpact: number }> || [];
+    const resilienceDetails = analysis.diagnostics.downsideResilience.details;
+    const scenarios = resilienceDetails.scenarios as Array<{ name: string; portfolioImpact: number; spImpact: number }> || [];
     
     // Combine API scenarios with additional ones
     const chartData = SCENARIOS.map(s => {

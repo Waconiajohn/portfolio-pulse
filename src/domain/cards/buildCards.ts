@@ -80,6 +80,150 @@ const WHY: Partial<Record<CardContract["id"], string>> = {
     "These numbers help you understand your portfolio's behavior in a consistent, comparable way.",
 };
 
+/**
+ * Generate consumer-friendly keyFinding text based on diagnostic details
+ * Rules: No ALL CAPS, no jargon, 1-2 sentences max
+ */
+function consumerKeyFinding(
+  id: CardContract["id"],
+  originalKeyFinding: string,
+  details: Record<string, unknown>,
+  status: string
+): string {
+  switch (id) {
+    case "riskDiversification": {
+      const topPositions = details.topPositions as Array<{ ticker: string; weight: number }> | undefined;
+      const topWeight = topPositions?.[0]?.weight ?? 0;
+      const topTicker = topPositions?.[0]?.ticker ?? "one holding";
+      const top3Weight = (details.top3Weight as number) ?? 0;
+      
+      if (topWeight > 0.15) {
+        return `Your largest holding (${topTicker}) is ${formatPct(topWeight)} of your portfolio. If it drops sharply, it could significantly impact your wealth.`;
+      } else if (top3Weight > 0.5) {
+        return `Your top 3 holdings make up ${formatPct(top3Weight)} of your portfolio. Spreading things out more could reduce your risk.`;
+      } else if (status === "GREEN") {
+        return `Your investments are well spread out, with no single holding dominating your portfolio.`;
+      }
+      return `Your portfolio has some concentration that could increase risk if certain investments drop.`;
+    }
+
+    case "downsideResilience": {
+      const avgImpact = (details.avgImpact as number) ?? -0.3;
+      const criticalCount = (details.criticalCount as number) ?? 0;
+      const impactPct = Math.abs(avgImpact);
+      
+      if (criticalCount >= 2) {
+        return `In a market downturn, your portfolio could fall about ${formatPct(impactPct, 0)}. You have some significant vulnerabilities to address.`;
+      } else if (impactPct > 0.35) {
+        return `In a bad market, your portfolio could drop around ${formatPct(impactPct, 0)}. That's a bigger swing than average—make sure you're comfortable with that.`;
+      } else if (status === "GREEN") {
+        return `Your portfolio is built to handle market drops reasonably well, with expected losses around ${formatPct(impactPct, 0)} in downturns.`;
+      }
+      return `In a market drop, your portfolio could fall about ${formatPct(impactPct, 0)}. Consider whether that level of volatility fits your comfort level.`;
+    }
+
+    case "costAnalysis": {
+      const allInFees = (details.allInFees as number) ?? 0;
+      const tenYearImpact = (details.tenYearImpact as number) ?? 0;
+      const modelLabel = (details.modelLabel as string) ?? "your approach";
+      
+      if (status === "GREEN") {
+        return `Your total fees are about ${formatPct(allInFees)}, which is reasonable for ${modelLabel}. Fees are one of the few things you can control.`;
+      } else if (status === "RED") {
+        return `Your fees total ${formatPct(allInFees)}—that could cost you ${formatCurrency(tenYearImpact, true)} over 10 years. Lower-cost options may be worth exploring.`;
+      }
+      return `Your fees are ${formatPct(allInFees)} per year. Over 10 years, that adds up to roughly ${formatCurrency(tenYearImpact, true)} in costs.`;
+    }
+
+    case "taxEfficiency": {
+      const totalHarvestable = (details.totalHarvestable as number) ?? 0;
+      const estimatedTaxSavings = (details.estimatedTaxSavings as number) ?? 0;
+      const inefficientInTaxable = (details.inefficientInTaxable as unknown[]) ?? [];
+      
+      if (totalHarvestable > 0) {
+        return `You have about ${formatCurrency(totalHarvestable, true)} in losses that could be harvested for roughly ${formatCurrency(estimatedTaxSavings, true)} in tax savings.`;
+      } else if (inefficientInTaxable.length > 0) {
+        return `Some tax-inefficient investments like bonds are in your taxable account. Moving them to a retirement account could save on taxes.`;
+      } else if (status === "GREEN") {
+        return `Your investments are positioned efficiently for taxes—good work keeping more of what you earn.`;
+      }
+      return `There may be opportunities to reduce your tax bill by repositioning some investments.`;
+    }
+
+    case "riskAdjusted": {
+      const probability = (details.probability as number) ?? 50;
+      const bandLabel = (details.bandLabel as string) ?? "Borderline";
+      const incomeSecured = details.incomeSecured as boolean;
+      
+      if (incomeSecured) {
+        return `Your essential expenses are covered by guaranteed income. Your ${probability.toFixed(0)}% success rate applies to extras and legacy goals.`;
+      } else if (probability >= 75) {
+        return `Based on your goals and timeline, you have a ${probability.toFixed(0)}% chance of success—a comfortable margin.`;
+      } else if (probability >= 50) {
+        return `Your plan has about a ${probability.toFixed(0)}% chance of success. Some adjustments could improve your odds.`;
+      }
+      return `At ${probability.toFixed(0)}% success probability, your plan may need changes. Consider saving more, adjusting your goal, or extending your timeline.`;
+    }
+
+    case "planningGaps": {
+      const criticalMissing = (details.criticalMissing as string[]) ?? [];
+      const completed = (details.completed as number) ?? 0;
+      const total = (details.total as number) ?? 11;
+      
+      if (completed === total) {
+        return `You've completed all the financial planning basics—your plan is well-protected.`;
+      } else if (criticalMissing.length > 0) {
+        const gaps = criticalMissing.slice(0, 2).map(s => sentenceCase(s)).join(" and ");
+        return `A few important items are missing: ${gaps}. These protect your plan from unexpected life events.`;
+      }
+      return `Most planning basics are in place. ${total - completed} item${total - completed > 1 ? "s" : ""} remain to fully protect your plan.`;
+    }
+
+    case "lifetimeIncomeSecurity": {
+      const coreCoveragePct = (details.coreCoveragePct as number) ?? 0;
+      const needsDataEntry = details.needsDataEntry as boolean;
+      const guaranteedIncome = (details.guaranteedLifetimeIncomeMonthly as number) ?? 0;
+      const coreExpenses = (details.coreExpensesMonthly as number) ?? 0;
+      
+      if (needsDataEntry) {
+        return `Enter your monthly expenses and income sources in the sidebar to see if your retirement income is on track.`;
+      } else if (coreCoveragePct >= 1.0) {
+        return `You're on track: your guaranteed income (${formatCurrency(guaranteedIncome)}/mo) covers your essential expenses. Market swings won't threaten your basic lifestyle.`;
+      } else if (coreCoveragePct >= 0.8) {
+        return `You're close: guaranteed income covers ${formatPct(coreCoveragePct, 0)} of essentials. Closing the gap would fully protect your basic needs.`;
+      } else if (coreCoveragePct > 0) {
+        return `At risk: only ${formatPct(coreCoveragePct, 0)} of your essential expenses are covered by guaranteed income. The rest depends on your portfolio.`;
+      }
+      return `No guaranteed lifetime income identified. Your entire retirement depends on portfolio performance.`;
+    }
+
+    case "performanceOptimization": {
+      const sharpeRatio = (details.sharpeRatio as number) ?? 0;
+      const pctOfTarget = (details.pctOfTarget as number) ?? 0;
+      const relativeImprovement = (details.relativeImprovement as number) ?? 0;
+      
+      if (pctOfTarget >= 100) {
+        return `Your portfolio is performing efficiently for the risk you're taking—returns are in line with expectations.`;
+      } else if (pctOfTarget >= 80) {
+        return `Your returns are close to target for your risk level. Small tweaks could improve efficiency by about ${formatPct(relativeImprovement, 0)}.`;
+      }
+      return `Your portfolio isn't earning as much as expected for the risk involved. There's room to improve by roughly ${formatPct(relativeImprovement, 0)}.`;
+    }
+
+    case "performanceMetrics": {
+      const sharpeRatio = (details.sharpeRatio as number) ?? 0;
+      const maxDrawdown = (details.maxDrawdown as number) ?? 0;
+      
+      if (status === "GREEN") {
+        return `Your risk-adjusted returns look healthy. The portfolio balances growth and stability well.`;
+      }
+      return `These metrics show how your portfolio behaves—helping you compare performance on a level playing field.`;
+    }
+
+    default:
+      return originalKeyFinding;
+  }
+}
 
 interface AccountMetrics {
   bucket: AccountBucket;
@@ -198,7 +342,7 @@ export function buildCardContracts(analysis: PortfolioAnalysis, holdings: Holdin
       whyItMatters: WHY[id] ?? "This diagnostic highlights a portfolio health dimension.",
       status: r.status,
       score: r.score,
-      keyFinding: r.keyFinding,
+      keyFinding: consumerKeyFinding(id, r.keyFinding, r.details, r.status),
       headlineMetric: r.headlineMetric,
       details: r.details,
       contextLabel,

@@ -27,6 +27,7 @@ import { cn } from '@/lib/utils';
 import { STATUS_LABELS, ScoringConfig, DEFAULT_SCORING_CONFIG } from '@/lib/scoring-config';
 import { DIAGNOSTIC_CATEGORIES } from '@/lib/constants';
 import { PortfolioAnalysis } from '@/types/portfolio';
+import { CARD_COPY } from '@/domain/content/cardCopy';
 
 const iconMap: Record<string, LucideIcon> = {
   Shield, ShieldAlert, TrendingUp, DollarSign, Receipt, 
@@ -42,6 +43,7 @@ interface MobileDiagnosticCarouselProps {
 
 interface CarouselCardProps {
   name: string;
+  subtitle?: string;
   iconName: string;
   categoryKey: string;
   result: DiagnosticResult;
@@ -53,6 +55,7 @@ interface CarouselCardProps {
 
 function CarouselCard({ 
   name, 
+  subtitle,
   iconName, 
   categoryKey, 
   result, 
@@ -98,13 +101,20 @@ function CarouselCard({
               isActive ? "text-primary" : "text-muted-foreground"
             )} />
           </div>
-          <div className="flex items-center gap-1 min-w-0 flex-1">
-            <CardTitle className="text-sm font-medium leading-tight">{name}</CardTitle>
-            <EducationPopup 
-              categoryKey={categoryKey} 
-              scoringConfig={scoringConfig}
-              riskTolerance={riskTolerance}
-            />
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-1">
+              <CardTitle className="text-sm font-medium leading-tight">{name}</CardTitle>
+              <EducationPopup 
+                categoryKey={categoryKey} 
+                scoringConfig={scoringConfig}
+                riskTolerance={riskTolerance}
+              />
+            </div>
+            {subtitle && (
+              <p className="text-[11px] text-muted-foreground truncate mt-0.5">
+                {subtitle}
+              </p>
+            )}
           </div>
         </div>
         {/* Status badge on its own row - horizontal layout */}
@@ -243,7 +253,8 @@ export function MobileDiagnosticCarousel({
                 style={{ paddingRight: index === diagnosticEntries.length - 1 ? '1rem' : 0 }}
               >
                 <CarouselCard
-                  name={config.name}
+                  name={CARD_COPY[key]?.title ?? config.name}
+                  subtitle={CARD_COPY[key]?.subtitle}
                   iconName={config.icon}
                   categoryKey={key}
                   result={analysis.diagnostics[key as keyof typeof analysis.diagnostics]}

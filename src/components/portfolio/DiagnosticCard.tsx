@@ -28,6 +28,7 @@ const iconMap: Record<string, LucideIcon> = {
 
 interface DiagnosticCardProps {
   name: string;
+  subtitle?: string;
   iconName: string;
   categoryKey: string;
   result: DiagnosticResult;
@@ -38,6 +39,7 @@ interface DiagnosticCardProps {
 
 export function DiagnosticCard({ 
   name, 
+  subtitle,
   iconName, 
   categoryKey, 
   result, 
@@ -74,13 +76,20 @@ export function DiagnosticCard({
             <div className="p-1.5 sm:p-2 rounded-lg bg-secondary shrink-0">
               <IconComponent size={16} className="text-primary sm:w-[18px] sm:h-[18px]" />
             </div>
-            <div className="flex items-center gap-1 min-w-0">
-              <CardTitle className="text-xs sm:text-sm font-medium truncate">{name}</CardTitle>
-              <EducationPopup 
-                categoryKey={categoryKey} 
-                scoringConfig={scoringConfig}
-                riskTolerance={riskTolerance}
-              />
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center gap-1">
+                <CardTitle className="text-xs sm:text-sm font-medium truncate">{name}</CardTitle>
+                <EducationPopup 
+                  categoryKey={categoryKey} 
+                  scoringConfig={scoringConfig}
+                  riskTolerance={riskTolerance}
+                />
+              </div>
+              {subtitle && (
+                <p className="text-[10px] sm:text-xs text-muted-foreground truncate mt-0.5">
+                  {subtitle}
+                </p>
+              )}
             </div>
           </div>
           <StatusBadge status={result.status} label={STATUS_LABELS[result.status]} showLabel size="sm" />

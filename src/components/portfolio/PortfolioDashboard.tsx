@@ -451,7 +451,14 @@ export function PortfolioDashboard() {
                 />
               ) : (
                 <div className="space-y-4 sm:space-y-6">
-                  {shockAlert && <ShockAlertCard alert={shockAlert} />}
+                  {shockAlert && (
+                    <ShockAlertCard
+                      alert={shockAlert}
+                      onExplain={() => {
+                        if (shockAlert.primaryCategoryKey) setSelectedCategory(String(shockAlert.primaryCategoryKey));
+                      }}
+                    />
+                  )}
                   <SummaryCard healthScore={analysis?.healthScore} actionPlan={actionPlan} />
                   <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 sm:gap-6">
                     <div className="lg:col-span-3">
@@ -564,7 +571,14 @@ export function PortfolioDashboard() {
                 ) : (
                   <div className="space-y-6">
                     {/* Shock Alert at top of mobile dashboard */}
-                    {shockAlert && <ShockAlertCard alert={shockAlert} />}
+                    {shockAlert && (
+                      <ShockAlertCard
+                        alert={shockAlert}
+                        onExplain={() => {
+                          if (shockAlert.primaryCategoryKey) setSelectedCategory(String(shockAlert.primaryCategoryKey));
+                        }}
+                      />
+                    )}
                     
                     {/* Linked Accounts above diagnostic cards on mobile */}
                     {isConsumer && <LinkedAccountsPanel onHoldingsSync={() => {}} compact />}

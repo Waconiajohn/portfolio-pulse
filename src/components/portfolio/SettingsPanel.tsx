@@ -16,10 +16,12 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Settings, RotateCcw, Info, Link } from 'lucide-react';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Settings, RotateCcw, Info, Link, Shield, DollarSign, TrendingUp, PieChart, Wallet } from 'lucide-react';
 import { toast } from 'sonner';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Badge } from '@/components/ui/badge';
+import { useAppMode } from '@/contexts/AppModeContext';
 
 interface SettingsPanelProps {
   assumptions: PortfolioAssumptions;
@@ -69,12 +71,14 @@ export function SettingsPanel({
   onAdvisorFeeChange,
   currentRiskTolerance
 }: SettingsPanelProps) {
+  const { isAdvisor } = useAppMode();
   const adjustments = RISK_TOLERANCE_ADJUSTMENTS[currentRiskTolerance];
   const [open, setOpen] = useState(false);
   const [localAssumptions, setLocalAssumptions] = useState<PortfolioAssumptions>(assumptions);
   const [localConfig, setLocalConfig] = useState<ScoringConfig>(scoringConfig);
   const [localAdviceModel, setLocalAdviceModel] = useState<AdviceModel>(adviceModel);
   const [localAdvisorFee, setLocalAdvisorFee] = useState(advisorFee);
+  const [activeTab, setActiveTab] = useState('profile');
 
   const updateAssetClass = (asset: AssetClass, field: keyof AssetAssumptions, value: number) => {
     setLocalAssumptions({
@@ -135,33 +139,58 @@ export function SettingsPanel({
           <Settings size={16} />
         </Button>
       </DialogTrigger>
-      <DialogContent className="max-w-3xl max-h-[85vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
+      <DialogContent className="max-w-4xl max-h-[90vh] p-0 overflow-hidden">
+        <DialogHeader className="px-6 pt-6 pb-4 border-b bg-gradient-to-b from-primary/5 to-transparent">
+          <DialogTitle className="flex items-center gap-2 text-xl">
             <Settings size={20} />
-            Benchmarks & Assumptions
+            {isAdvisor ? 'Advisor Settings & Benchmarks' : 'Benchmarks & Assumptions'}
           </DialogTitle>
+          {isAdvisor && (
+            <p className="text-sm text-muted-foreground">
+              Customize scoring thresholds, fee benchmarks, and risk parameters for your practice
+            </p>
+          )}
         </DialogHeader>
 
         {/* Explanatory Note */}
-        <div className="p-3 rounded-lg bg-primary/10 border border-primary/20 text-sm">
-          <div className="flex items-start gap-2">
+        <div className="px-6 py-3 bg-primary/5 border-b">
+          <div className="flex items-start gap-2 text-sm">
             <Info size={16} className="text-primary mt-0.5 shrink-0" />
             <div>
-              <span className="font-medium">Note:</span> Some benchmarks are <span className="text-primary font-medium">🔗 risk-linked</span> (e.g., target volatility varies by Conservative/Moderate/Aggressive profile). 
-              Others are <span className="font-medium">📌 absolute</span> (e.g., single position concentration {'>'}10% is always flagged regardless of risk profile).
+              <span className="font-medium">Note:</span> Some benchmarks are <span className="text-primary font-medium">🔗 risk-linked</span> (adjust by profile). 
+              Others are <span className="font-medium">📌 absolute</span> (always flagged regardless of risk profile).
             </div>
           </div>
         </div>
 
-        <Tabs defaultValue="profile" className="mt-4">
-          <TabsList className="grid w-full grid-cols-5">
-            <TabsTrigger value="profile">Risk Profile</TabsTrigger>
-            <TabsTrigger value="advice">Advice Model</TabsTrigger>
-            <TabsTrigger value="risk">Concentration</TabsTrigger>
-            <TabsTrigger value="sharpe">Performance</TabsTrigger>
-            <TabsTrigger value="returns">Returns</TabsTrigger>
-          </TabsList>
+        <ScrollArea className="max-h-[60vh]">
+          <div className="p-6">
+            <Tabs value={activeTab} onValueChange={setActiveTab}>
+              <TabsList className="grid w-full grid-cols-6 mb-6">
+                <TabsTrigger value="profile" className="gap-1 text-xs">
+                  <Shield className="h-3 w-3" />
+                  Profile
+                </TabsTrigger>
+                <TabsTrigger value="advice" className="gap-1 text-xs">
+                  <Wallet className="h-3 w-3" />
+                  Advice
+                </TabsTrigger>
+                <TabsTrigger value="risk" className="gap-1 text-xs">
+                  <PieChart className="h-3 w-3" />
+                  Limits
+                </TabsTrigger>
+                <TabsTrigger value="sharpe" className="gap-1 text-xs">
+                  <TrendingUp className="h-3 w-3" />
+                  Performance
+                </TabsTrigger>
+                <TabsTrigger value="fees" className="gap-1 text-xs">
+                  <DollarSign className="h-3 w-3" />
+                  Fees
+                </TabsTrigger>
+                <TabsTrigger value="returns" className="gap-1 text-xs">
+                  Returns
+                </TabsTrigger>
+              </TabsList>
 
           {/* Risk Profile Adjustments Tab */}
           <TabsContent value="profile" className="space-y-6 mt-4">
@@ -593,51 +622,86 @@ export function SettingsPanel({
                 </div>
               </div>
             </div>
-          </TabsContent>
+            </TabsContent>
 
-          {/* Fee Thresholds Tab */}
-          <TabsContent value="fees" className="space-y-6 mt-4">
-            <p className="text-xs text-muted-foreground">
-              Acceptable total fee ranges depend on the advice model. Self-directed investors should have lower fees.
-              Advisory relationships can justify higher fees for comprehensive services.
-            </p>
+            {/* Fee Thresholds Tab */}
+            <TabsContent value="fees" className="space-y-6">
+              <p className="text-xs text-muted-foreground">
+                Acceptable total fee ranges depend on the advice model. Self-directed investors should have lower fees.
+                Advisory relationships can justify higher fees for comprehensive services.
+              </p>
 
-            {ADVICE_MODELS.map(model => (
-              <div key={model} className="p-4 bg-muted/50 rounded-lg space-y-4">
-                <h4 className="font-medium text-sm">{ADVICE_MODEL_LABELS[model]}</h4>
+              {ADVICE_MODELS.map(model => (
+                <div key={model} className="p-4 bg-muted/50 rounded-lg space-y-4">
+                  <h4 className="font-medium text-sm flex items-center gap-2">
+                    {ADVICE_MODEL_LABELS[model]}
+                    {model === localAdviceModel && (
+                      <Badge variant="default" className="text-[10px]">Active</Badge>
+                    )}
+                  </h4>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-2 gap-4 items-center">
+                      <Label className="font-medium">Green Max %</Label>
+                      <Input
+                        type="number"
+                        step="0.1"
+                        value={(localConfig.fees[model].greenMax * 100).toFixed(2)}
+                        onChange={(e) => {
+                          const newFees = { ...localConfig.fees };
+                          newFees[model] = { ...newFees[model], greenMax: parseFloat(e.target.value) / 100 || 0 };
+                          setLocalConfig({ ...localConfig, fees: newFees });
+                        }}
+                        className="h-8 font-mono"
+                      />
+                    </div>
+                    <div className="grid grid-cols-2 gap-4 items-center">
+                      <Label className="font-medium">Yellow Max %</Label>
+                      <Input
+                        type="number"
+                        step="0.1"
+                        value={(localConfig.fees[model].yellowMax * 100).toFixed(2)}
+                        onChange={(e) => {
+                          const newFees = { ...localConfig.fees };
+                          newFees[model] = { ...newFees[model], yellowMax: parseFloat(e.target.value) / 100 || 0 };
+                          setLocalConfig({ ...localConfig, fees: newFees });
+                        }}
+                        className="h-8 font-mono"
+                      />
+                    </div>
+                  </div>
+                </div>
+              ))}
+
+              {/* Lifetime Income Security thresholds */}
+              <div className="p-4 bg-muted/50 rounded-lg space-y-4">
+                <h4 className="font-medium text-sm">Lifetime Income Security</h4>
+                <p className="text-xs text-muted-foreground">
+                  Thresholds for guaranteed income coverage of core expenses.
+                </p>
                 <div className="grid grid-cols-2 gap-4">
                   <div className="grid grid-cols-2 gap-4 items-center">
-                    <Label className="font-medium">Green Max %</Label>
+                    <Label className="font-medium">Green Coverage %</Label>
                     <Input
                       type="number"
-                      step="0.1"
-                      value={(localConfig.fees[model].greenMax * 100).toFixed(2)}
-                      onChange={(e) => {
-                        const newFees = { ...localConfig.fees };
-                        newFees[model] = { ...newFees[model], greenMax: parseFloat(e.target.value) / 100 || 0 };
-                        setLocalConfig({ ...localConfig, fees: newFees });
-                      }}
+                      step="5"
+                      value={(localConfig.lifetimeIncomeSecurity.coreCoverageGreen * 100).toFixed(0)}
+                      onChange={(e) => updateScoringConfig(['lifetimeIncomeSecurity', 'coreCoverageGreen'], parseFloat(e.target.value) / 100 || 0)}
                       className="h-8 font-mono"
                     />
                   </div>
                   <div className="grid grid-cols-2 gap-4 items-center">
-                    <Label className="font-medium">Yellow Max %</Label>
+                    <Label className="font-medium">Yellow Coverage %</Label>
                     <Input
                       type="number"
-                      step="0.1"
-                      value={(localConfig.fees[model].yellowMax * 100).toFixed(2)}
-                      onChange={(e) => {
-                        const newFees = { ...localConfig.fees };
-                        newFees[model] = { ...newFees[model], yellowMax: parseFloat(e.target.value) / 100 || 0 };
-                        setLocalConfig({ ...localConfig, fees: newFees });
-                      }}
+                      step="5"
+                      value={(localConfig.lifetimeIncomeSecurity.coreCoverageYellow * 100).toFixed(0)}
+                      onChange={(e) => updateScoringConfig(['lifetimeIncomeSecurity', 'coreCoverageYellow'], parseFloat(e.target.value) / 100 || 0)}
                       className="h-8 font-mono"
                     />
                   </div>
                 </div>
               </div>
-            ))}
-          </TabsContent>
+            </TabsContent>
 
           {/* Returns Tab */}
           <TabsContent value="returns" className="space-y-4 mt-4">
@@ -696,19 +760,21 @@ export function SettingsPanel({
                 />
               </div>
             </div>
-          </TabsContent>
-        </Tabs>
-
-        <div className="flex justify-between pt-4 border-t mt-4">
-          <Button variant="outline" onClick={handleReset} className="gap-2">
-            <RotateCcw size={14} />
-            Reset to Defaults
-          </Button>
-          <div className="flex gap-2">
-            <Button variant="ghost" onClick={() => setOpen(false)}>Cancel</Button>
-            <Button onClick={handleSave}>Save Changes</Button>
-          </div>
+            </TabsContent>
+          </Tabs>
         </div>
+      </ScrollArea>
+
+      <div className="flex justify-between px-6 py-4 border-t bg-muted/30">
+        <Button variant="outline" onClick={handleReset} className="gap-2">
+          <RotateCcw size={14} />
+          Reset to Defaults
+        </Button>
+        <div className="flex gap-2">
+          <Button variant="ghost" onClick={() => setOpen(false)}>Cancel</Button>
+          <Button onClick={handleSave}>Save Changes</Button>
+        </div>
+      </div>
       </DialogContent>
     </Dialog>
   );

@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { Holding, AccountType, AssetClass } from '@/types/portfolio';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -7,9 +7,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
-import { Plus, Trash2, Upload, AlertCircle, Check } from 'lucide-react';
+import { Plus, Trash2, Upload, AlertCircle, Check, ChevronDown } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 
 interface HoldingsTableProps {
   holdings: Holding[];
@@ -170,6 +171,50 @@ export function HoldingsTable({ holdings, onUpdate }: HoldingsTableProps) {
   const [csvDialogOpen, setCsvDialogOpen] = useState(false);
   const [csvState, setCsvState] = useState<CSVMappingState | null>(null);
   const [validationErrors, setValidationErrors] = useState<string[]>([]);
+  const [isMobile, setIsMobile] = useState(false);
+  const [expandedSections, setExpandedSections] = useState<Record<AccountSubtype, boolean>>({
+    'brokerage': true,
+    'traditional-ira': true,
+    'roth-ira': true,
+  });
+
+  // Detect mobile and set initial collapse state
+  useEffect(() => {
+    const checkMobile = () => {
+      const mobile = window.matchMedia("(max-width: 640px)").matches;
+      setIsMobile(mobile);
+    };
+    
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
+
+  // Set initial expanded state based on mobile
+  useEffect(() => {
+    if (isMobile) {
+      // Mobile: only first section (brokerage) expanded
+      setExpandedSections({
+        'brokerage': true,
+        'traditional-ira': false,
+        'roth-ira': false,
+      });
+    } else {
+      // Desktop: all expanded
+      setExpandedSections({
+        'brokerage': true,
+        'traditional-ira': true,
+        'roth-ira': true,
+      });
+    }
+  }, [isMobile]);
+
+  const toggleSection = (subtype: AccountSubtype) => {
+    setExpandedSections(prev => ({
+      ...prev,
+      [subtype]: !prev[subtype],
+    }));
+  };
 
   const addHolding = () => {
     onUpdate([...holdings, createEmptyHolding()]);
@@ -564,55 +609,76 @@ export function HoldingsTable({ holdings, onUpdate }: HoldingsTableProps) {
           No holdings added. Click "Add Holding" or import a CSV file.
         </div>
       ) : (
-        <div className="space-y-6">
+        <div className="space-y-4">
           {accountGroups.map((group, groupIndex) => {
             const percentOfTotal = totalValue > 0 ? (group.totalValue / totalValue) * 100 : 0;
+            const isExpanded = expandedSections[group.subtype];
             
             return (
-              <div key={group.subtype} className="space-y-2">
-                {/* Account Section Header */}
-                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 p-3 rounded-lg bg-muted/30 border">
-                  <div className="flex flex-col sm:flex-row sm:items-center gap-2">
-                    <h3 className="font-semibold text-foreground">{group.label}</h3>
-                    <Badge variant="secondary" className="w-fit text-xs">
-                      {group.taxLabel}
-                    </Badge>
-                  </div>
-                  <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-4 text-sm">
-                    <span className="font-mono font-medium">{formatCurrency(group.totalValue)}</span>
-                    <span className="text-muted-foreground">
-                      {percentOfTotal.toFixed(1)}% of total
-                    </span>
-                  </div>
-                </div>
+              <Collapsible
+                key={group.subtype}
+                open={isExpanded}
+                onOpenChange={() => toggleSection(group.subtype)}
+              >
+                {/* Account Section Header - Clickable */}
+                <CollapsibleTrigger asChild>
+                  <button
+                    className="w-full flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 p-3 rounded-lg bg-muted/30 border hover:bg-muted/50 transition-colors cursor-pointer text-left"
+                  >
+                    <div className="flex items-center gap-2">
+                      <ChevronDown
+                        size={18}
+                        className={cn(
+                          "text-muted-foreground transition-transform duration-200",
+                          isExpanded ? "rotate-0" : "-rotate-90"
+                        )}
+                      />
+                      <h3 className="font-semibold text-foreground">{group.label}</h3>
+                      <Badge variant="secondary" className="text-xs">
+                        {group.taxLabel}
+                      </Badge>
+                      <span className="text-xs text-muted-foreground">
+                        ({group.holdings.length} holding{group.holdings.length !== 1 ? 's' : ''})
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-4 text-sm pl-6 sm:pl-0">
+                      <span className="font-mono font-medium">{formatCurrency(group.totalValue)}</span>
+                      <span className="text-muted-foreground">
+                        {percentOfTotal.toFixed(1)}%
+                      </span>
+                    </div>
+                  </button>
+                </CollapsibleTrigger>
 
                 {/* Account Holdings Table */}
-                <div className="rounded-lg border border-border overflow-hidden">
-                  <Table>
-                    <TableHeader>
-                      <TableRow className="bg-muted/50 hover:bg-muted/50">
-                        <TableHead className="w-24">Ticker</TableHead>
-                        <TableHead className="w-32">Name</TableHead>
-                        <TableHead className="w-24 text-right">Shares</TableHead>
-                        <TableHead className="w-28 text-right">Price</TableHead>
-                        <TableHead className="w-28 text-right">Cost Basis</TableHead>
-                        <TableHead className="w-32">Account</TableHead>
-                        <TableHead className="w-32">Asset Class</TableHead>
-                        <TableHead className="w-28 text-right">Value</TableHead>
-                        <TableHead className="w-12"></TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {group.holdings.map(renderHoldingRow)}
-                    </TableBody>
-                  </Table>
-                </div>
+                <CollapsibleContent className="pt-2">
+                  <div className="rounded-lg border border-border overflow-hidden">
+                    <Table>
+                      <TableHeader>
+                        <TableRow className="bg-muted/50 hover:bg-muted/50">
+                          <TableHead className="w-24">Ticker</TableHead>
+                          <TableHead className="w-32">Name</TableHead>
+                          <TableHead className="w-24 text-right">Shares</TableHead>
+                          <TableHead className="w-28 text-right">Price</TableHead>
+                          <TableHead className="w-28 text-right">Cost Basis</TableHead>
+                          <TableHead className="w-32">Account</TableHead>
+                          <TableHead className="w-32">Asset Class</TableHead>
+                          <TableHead className="w-28 text-right">Value</TableHead>
+                          <TableHead className="w-12"></TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {group.holdings.map(renderHoldingRow)}
+                      </TableBody>
+                    </Table>
+                  </div>
+                </CollapsibleContent>
 
                 {/* Divider between sections (except last) */}
                 {groupIndex < accountGroups.length - 1 && (
                   <div className="pt-2" />
                 )}
-              </div>
+              </Collapsible>
             );
           })}
         </div>

@@ -1,13 +1,14 @@
 import { PortfolioAnalysis } from '@/types/portfolio';
 import { PerformanceMetrics } from '@/types/performance-metrics';
 import { ScoringConfig } from '@/lib/scoring-config';
-import { TrendingUp, TrendingDown, Minus } from 'lucide-react';
+import { TrendingUp, TrendingDown, Minus, ChevronRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface MobileMetricsCarouselProps {
   analysis: PortfolioAnalysis;
   scoringConfig: ScoringConfig;
   performanceMetrics?: PerformanceMetrics;
+  onViewAllMetrics?: () => void;
 }
 
 interface MetricItemProps {
@@ -45,7 +46,7 @@ function MetricItem({ label, value, subValue, trend }: MetricItemProps) {
   );
 }
 
-export function MobileMetricsCarousel({ analysis, scoringConfig, performanceMetrics }: MobileMetricsCarouselProps) {
+export function MobileMetricsCarousel({ analysis, scoringConfig, performanceMetrics, onViewAllMetrics }: MobileMetricsCarouselProps) {
   const feePercent = ((analysis.totalFees / (analysis.totalValue || 1)) * 100).toFixed(2);
   
   // Get metrics from performanceMetrics if available
@@ -96,6 +97,20 @@ export function MobileMetricsCarousel({ analysis, scoringConfig, performanceMetr
           value={`$${(analysis.totalFees / 1000).toFixed(1)}K`}
           subValue={`${feePercent}%/yr`}
         />
+        
+        {/* See All Metrics button */}
+        {onViewAllMetrics && (
+          <button
+            onClick={onViewAllMetrics}
+            className="flex-shrink-0 min-w-[100px] p-3 bg-primary/10 hover:bg-primary/20 rounded-xl border border-primary/30 flex flex-col items-center justify-center gap-1 transition-colors"
+          >
+            <div className="flex items-center gap-1 text-primary font-medium text-sm">
+              <span>See All</span>
+              <ChevronRight size={14} />
+            </div>
+            <div className="text-[10px] text-muted-foreground">View Details</div>
+          </button>
+        )}
       </div>
     </div>
   );

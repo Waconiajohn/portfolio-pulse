@@ -323,7 +323,12 @@ export function PortfolioDashboard() {
             analysis={analysis} 
             onSettingsOpen={() => setSettingsOpen(true)} 
           />
-          <MobileMetricsCarousel analysis={analysis} scoringConfig={scoringConfig} performanceMetrics={performanceMetrics} />
+          <MobileMetricsCarousel 
+            analysis={analysis} 
+            scoringConfig={scoringConfig} 
+            performanceMetrics={performanceMetrics}
+            onViewAllMetrics={() => setSelectedCategory('performanceMetrics')}
+          />
           <MobileSettingsSheet
             open={settingsOpen}
             onOpenChange={setSettingsOpen}

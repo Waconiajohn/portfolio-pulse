@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useState, useMemo } from 'react';
 import useEmblaCarousel from 'embla-carousel-react';
 import { WheelGesturesPlugin } from 'embla-carousel-wheel-gestures';
 import { DiagnosticResult, RiskTolerance } from '@/types/portfolio';
@@ -167,9 +167,19 @@ export function MobileDiagnosticCarousel({
   const [showSwipeHint, setShowSwipeHint] = useState(true);
   const [hasInteracted, setHasInteracted] = useState(false);
 
-  const diagnosticEntries = Object.entries(DIAGNOSTIC_CATEGORIES) as Array<
-    [keyof typeof DIAGNOSTIC_CATEGORIES, typeof DIAGNOSTIC_CATEGORIES[keyof typeof DIAGNOSTIC_CATEGORIES]]
-  >;
+  // Get diagnostic entries and sort by severity (RED first, then YELLOW, then GREEN)
+  const diagnosticEntries = useMemo(() => {
+    const entries = Object.entries(DIAGNOSTIC_CATEGORIES) as Array<
+      [keyof typeof DIAGNOSTIC_CATEGORIES, typeof DIAGNOSTIC_CATEGORIES[keyof typeof DIAGNOSTIC_CATEGORIES]]
+    >;
+    
+    const statusOrder = { RED: 0, YELLOW: 1, GREEN: 2 };
+    return entries.sort((a, b) => {
+      const statusA = analysis.diagnostics[a[0] as keyof typeof analysis.diagnostics]?.status ?? 'GREEN';
+      const statusB = analysis.diagnostics[b[0] as keyof typeof analysis.diagnostics]?.status ?? 'GREEN';
+      return statusOrder[statusA] - statusOrder[statusB];
+    });
+  }, [analysis.diagnostics]);
 
   const onSelect = useCallback(() => {
     if (!emblaApi) return;
@@ -214,8 +224,39 @@ export function MobileDiagnosticCarousel({
     if (emblaApi) emblaApi.scrollNext();
   }, [emblaApi]);
 
+  // Determine current section based on selected card
+  const currentCardKey = diagnosticEntries[selectedIndex]?.[0];
+  const currentCardStatus = currentCardKey 
+    ? analysis.diagnostics[currentCardKey as keyof typeof analysis.diagnostics]?.status 
+    : 'GREEN';
+  const isNeedsAttention = currentCardStatus === 'RED' || currentCardStatus === 'YELLOW';
+
+  // Count cards in each section
+  const needsAttentionCount = diagnosticEntries.filter(([key]) => {
+    const status = analysis.diagnostics[key as keyof typeof analysis.diagnostics]?.status;
+    return status === 'RED' || status === 'YELLOW';
+  }).length;
+  const lookingGoodCount = diagnosticEntries.length - needsAttentionCount;
+
   return (
-    <div className="space-y-4">
+    <div className="space-y-3">
+      {/* Section Header */}
+      <div className="flex items-center justify-between px-1">
+        <h3 className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+          <span className={cn(
+            "w-2 h-2 rounded-full transition-colors",
+            isNeedsAttention ? "bg-status-warning" : "bg-status-good"
+          )} />
+          {isNeedsAttention ? "Needs Attention" : "Looking Good"}
+        </h3>
+        <span className="text-xs text-muted-foreground">
+          {isNeedsAttention 
+            ? `${selectedIndex + 1} of ${needsAttentionCount}`
+            : `${selectedIndex - needsAttentionCount + 1} of ${lookingGoodCount}`
+          }
+        </span>
+      </div>
+
       {/* Carousel with edge indicators */}
       <div className="relative">
         {/* Left arrow (shows more cards to left) */}

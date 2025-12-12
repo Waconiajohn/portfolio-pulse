@@ -169,6 +169,24 @@ export function PortfolioDashboard() {
     [analysis, holdings]
   );
 
+  // Filter out summary card and sort by severity (RED first, then YELLOW, then GREEN)
+  const sortedCards = useMemo(() => {
+    const statusOrder = { RED: 0, YELLOW: 1, GREEN: 2 };
+    return cardContracts
+      .filter((c) => c.id !== 'summary')
+      .sort((a, b) => statusOrder[a.status] - statusOrder[b.status]);
+  }, [cardContracts]);
+
+  // Group cards for section headers
+  const needsAttentionCards = useMemo(
+    () => sortedCards.filter((c) => c.status === 'RED' || c.status === 'YELLOW'),
+    [sortedCards]
+  );
+  const lookingGoodCards = useMemo(
+    () => sortedCards.filter((c) => c.status === 'GREEN'),
+    [sortedCards]
+  );
+
   const actionPlan = useMemo(() => buildActionPlan(cardContracts, 6), [cardContracts]);
 
   const selectedCard = useMemo(
@@ -479,27 +497,68 @@ export function PortfolioDashboard() {
               ) : (
                 <div className="space-y-4 sm:space-y-6">
                   <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 sm:gap-6">
-                    <div className="lg:col-span-3">
-                      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3 sm:gap-4">
-                      {cardContracts.map((c) => (
-                        <DiagnosticCard
-                          key={String(c.id)}
-                          name={String(c.title)}
-                          subtitle={c.subtitle}
-                          iconName={c.iconName ?? "Shield"}
-                          categoryKey={String(c.id)}
-                          result={{
-                            status: c.status,
-                            score: c.score,
-                            keyFinding: c.keyFinding,
-                            headlineMetric: c.headlineMetric,
-                            details: c.details,
-                          }}
-                          onViewDetails={() => setSelectedCategory(String(c.id))}
-                          scoringConfig={baseScoringConfig}
-                          riskTolerance={clientInfo.riskTolerance}
-                        />
-                      ))}
+                    <div className="lg:col-span-3 space-y-6">
+                      {/* Needs Attention Section */}
+                      {needsAttentionCards.length > 0 && (
+                        <div className="space-y-3">
+                          <h3 className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+                            <span className="w-2 h-2 rounded-full bg-status-warning" />
+                            Needs Attention
+                          </h3>
+                          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3 sm:gap-4">
+                            {needsAttentionCards.map((c) => (
+                              <DiagnosticCard
+                                key={String(c.id)}
+                                name={String(c.title)}
+                                subtitle={c.subtitle}
+                                iconName={c.iconName ?? "Shield"}
+                                categoryKey={String(c.id)}
+                                result={{
+                                  status: c.status,
+                                  score: c.score,
+                                  keyFinding: c.keyFinding,
+                                  headlineMetric: c.headlineMetric,
+                                  details: c.details,
+                                }}
+                                onViewDetails={() => setSelectedCategory(String(c.id))}
+                                scoringConfig={baseScoringConfig}
+                                riskTolerance={clientInfo.riskTolerance}
+                              />
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Looking Good Section */}
+                      {lookingGoodCards.length > 0 && (
+                        <div className="space-y-3">
+                          <h3 className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+                            <span className="w-2 h-2 rounded-full bg-status-good" />
+                            Looking Good
+                          </h3>
+                          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3 sm:gap-4">
+                            {lookingGoodCards.map((c) => (
+                              <DiagnosticCard
+                                key={String(c.id)}
+                                name={String(c.title)}
+                                subtitle={c.subtitle}
+                                iconName={c.iconName ?? "Shield"}
+                                categoryKey={String(c.id)}
+                                result={{
+                                  status: c.status,
+                                  score: c.score,
+                                  keyFinding: c.keyFinding,
+                                  headlineMetric: c.headlineMetric,
+                                  details: c.details,
+                                }}
+                                onViewDetails={() => setSelectedCategory(String(c.id))}
+                                scoringConfig={baseScoringConfig}
+                                riskTolerance={clientInfo.riskTolerance}
+                              />
+                            ))}
+                          </div>
+                        </div>
+                      )}
                     </div>
                     
                     {/* Action Plan below cards */}
@@ -514,10 +573,9 @@ export function PortfolioDashboard() {
                   <div className="hidden lg:block space-y-6">
                     <SidebarContent />
                   </div>
-                  </div>
                 </div>
               )}
-            </TabsContent>
+          </TabsContent>
 
             <TabsContent value="holdings">
               <Card>

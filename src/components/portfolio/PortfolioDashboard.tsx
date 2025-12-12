@@ -46,6 +46,7 @@ import { CorrelationHeatmap } from '@/components/charts/CorrelationHeatmap';
 import { SettingsPanel } from './SettingsPanel';
 import { buildCardContracts } from '@/domain/cards/buildCards';
 import { buildActionPlan } from '@/domain/summary/buildActionPlan';
+import SummaryCard from '@/components/portfolio/SummaryCard';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Textarea } from '@/components/ui/textarea';
@@ -429,9 +430,11 @@ export function PortfolioDashboard() {
                   onLifetimeIncomeUpdate={setLifetimeIncomeInputs}
                 />
               ) : (
-                <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 sm:gap-6">
-                  <div className="lg:col-span-3">
-                    <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3 sm:gap-4">
+                <div className="space-y-4 sm:space-y-6">
+                  <SummaryCard healthScore={analysis?.healthScore} actionPlan={actionPlan} />
+                  <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 sm:gap-6">
+                    <div className="lg:col-span-3">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3 sm:gap-4">
                       {cardContracts.map((c) => (
                         <DiagnosticCard
                           key={String(c.id)}
@@ -455,6 +458,7 @@ export function PortfolioDashboard() {
 
                   <div className="hidden lg:block space-y-6">
                     <SidebarContent />
+                  </div>
                   </div>
                 </div>
               )}

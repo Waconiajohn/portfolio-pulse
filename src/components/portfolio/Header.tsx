@@ -4,6 +4,7 @@ import { ScoringConfig, AdviceModel, ADVICE_MODEL_LABELS } from '@/lib/scoring-c
 import { HealthScore } from './HealthScore';
 import { MetricCard } from './MetricCard';
 import { SettingsPanel } from './SettingsPanel';
+import { ModeToggle } from './ModeToggle';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
@@ -11,6 +12,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { FileDown, ChevronDown, Database } from 'lucide-react';
 import { generatePDF } from '@/lib/pdf-export';
 import { toast } from 'sonner';
+import { useAppMode } from '@/contexts/AppModeContext';
 
 const ADVICE_MODELS: AdviceModel[] = ['self-directed', 'advisor-passive', 'advisor-tactical'];
 
@@ -60,6 +62,8 @@ export function Header({
     }
   };
 
+  const { isAdvisor } = useAppMode();
+
   return (
     <header className="border-b border-border bg-card/50 backdrop-blur-sm sticky top-0 z-10">
       <div className="container mx-auto px-4 py-4">
@@ -68,10 +72,13 @@ export function Header({
           <div className="flex items-center gap-4">
             <div>
               <h1 className="text-xl font-semibold tracking-tight">Portfolio Diagnostic</h1>
-              <p className="text-xs text-muted-foreground">Professional Advisory Analysis</p>
+              <p className="text-xs text-muted-foreground">
+                {isAdvisor ? 'Professional Advisory Analysis' : 'Personal Portfolio Analysis'}
+              </p>
             </div>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-3">
+            <ModeToggle />
             <Button variant="outline" size="sm" onClick={onLoadSample} className="gap-2">
               <Database size={14} />
               Load Sample

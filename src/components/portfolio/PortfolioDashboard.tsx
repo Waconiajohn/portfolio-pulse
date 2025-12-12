@@ -13,9 +13,12 @@ import {
 } from '@/lib/scoring-config';
 import { SAMPLE_HOLDINGS } from '@/lib/sample-data';
 import { computeCorrelationMatrix, generateSimulatedReturns, analyzeCorrelationIssues, CorrelationMatrixResult } from '@/lib/correlation';
+import { calculateAllPerformanceMetrics } from '@/lib/performance-metrics';
+import { useAppMode } from '@/contexts/AppModeContext';
 import { Header } from './Header';
 import { HoldingsTable } from './HoldingsTable';
 import { DiagnosticCard } from './DiagnosticCard';
+import { PerformanceMetricsCard } from './PerformanceMetricsCard';
 
 import { DetailView } from './DetailView';
 import { LifetimeIncomePanel } from './LifetimeIncomePanel';
@@ -27,7 +30,7 @@ import { CorrelationHeatmap } from '@/components/charts/CorrelationHeatmap';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Textarea } from '@/components/ui/textarea';
-import { LayoutGrid, Table, FileText, LineChart, Wallet } from 'lucide-react';
+import { LayoutGrid, Table, FileText, LineChart, Wallet, Link } from 'lucide-react';
 import { toast } from 'sonner';
 
 const initialClientInfo: ClientInfo = {
@@ -58,6 +61,8 @@ const initialLifetimeIncomeInputs: LifetimeIncomeInputs = {
 };
 
 export function PortfolioDashboard() {
+  const { isConsumer, isAdvisor, messaging } = useAppMode();
+  
   const [holdings, setHoldings] = useState<Holding[]>([]);
   const [clientInfo, setClientInfo] = useState<ClientInfo>(initialClientInfo);
   const [checklist, setChecklist] = useState<PlanningChecklist>(initialChecklist);
@@ -78,6 +83,11 @@ export function PortfolioDashboard() {
   const analysis: PortfolioAnalysis = useMemo(() => {
     return analyzePortfolio(holdings, clientInfo, checklist, scoringConfig, adviceModel, advisorFee, lifetimeIncomeInputs);
   }, [holdings, clientInfo, checklist, scoringConfig, adviceModel, advisorFee, lifetimeIncomeInputs]);
+
+  // Calculate advanced performance metrics
+  const performanceMetrics = useMemo(() => {
+    return calculateAllPerformanceMetrics(holdings);
+  }, [holdings]);
 
   // Compute correlation matrix when holdings change
   const correlationData: CorrelationMatrixResult = useMemo(() => {
@@ -242,6 +252,14 @@ export function PortfolioDashboard() {
 
                 {/* Sidebar */}
                 <div className="space-y-6">
+                  {/* Performance Metrics Card - Consumer Mode Feature */}
+                  {isConsumer && holdings.length > 0 && (
+                    <PerformanceMetricsCard 
+                      metrics={performanceMetrics} 
+                      riskTolerance={clientInfo.riskTolerance} 
+                    />
+                  )}
+                  
                   <LifetimeIncomePanel
                     inputs={lifetimeIncomeInputs}
                     onUpdate={setLifetimeIncomeInputs}

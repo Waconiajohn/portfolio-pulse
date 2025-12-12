@@ -11,6 +11,7 @@ import { Plus, Trash2, Upload, AlertCircle, Check, ChevronDown } from 'lucide-re
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { inferAccountSubtype, type AccountBucket } from '@/domain/accounts/inferAccountSubtype';
 
 interface HoldingsTableProps {
   holdings: Holding[];
@@ -49,22 +50,13 @@ interface AccountGroup {
   totalValue: number;
 }
 
-function inferAccountSubtype(holding: Holding): AccountSubtype {
-  const name = (holding.name || '').toLowerCase();
-  
-  if (holding.accountType === 'Taxable') {
-    return 'brokerage';
+function mapBucketToSubtype(bucket: AccountBucket): AccountSubtype {
+  switch (bucket) {
+    case "Brokerage": return 'brokerage';
+    case "Traditional IRA": return 'traditional-ira';
+    case "Roth IRA": return 'roth-ira';
+    default: return 'brokerage';
   }
-  
-  // Tax-Advantaged: check name for Roth vs Traditional
-  if (name.includes('roth')) {
-    return 'roth-ira';
-  }
-  if (name.includes('trad ira') || name.includes('traditional') || name.includes('[trad ira]')) {
-    return 'traditional-ira';
-  }
-  // Default Tax-Advantaged to Traditional IRA
-  return 'traditional-ira';
 }
 
 function groupHoldingsByAccountSubtype(holdings: Holding[]): AccountGroup[] {
@@ -75,7 +67,8 @@ function groupHoldingsByAccountSubtype(holdings: Holding[]): AccountGroup[] {
   };
 
   holdings.forEach(h => {
-    const subtype = inferAccountSubtype(h);
+    const bucket = inferAccountSubtype(h);
+    const subtype = mapBucketToSubtype(bucket);
     groups[subtype].push(h);
   });
 

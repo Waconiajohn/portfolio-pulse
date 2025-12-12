@@ -22,6 +22,7 @@ export type CardAction = {
 export type CardContract = {
   id: keyof PortfolioAnalysis["diagnostics"] | "summary";
   title: string;
+  iconName?: string;
 
   // Why this card exists (education/explanation)
   whyItMatters: string;

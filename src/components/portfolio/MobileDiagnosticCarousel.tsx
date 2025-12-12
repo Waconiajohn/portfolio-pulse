@@ -208,14 +208,9 @@ export function MobileDiagnosticCarousel({
     <div className="space-y-4">
       {/* Carousel with edge indicators */}
       <div className="relative">
-        {/* Left edge gradient + arrow (shows more cards to left) */}
+        {/* Left arrow (shows more cards to left) */}
         {canScrollPrev && (
-          <div 
-            className="absolute left-0 top-0 bottom-0 w-12 z-10 flex items-center justify-start pointer-events-none"
-            style={{
-              background: 'linear-gradient(to right, hsl(var(--background)) 0%, transparent 100%)'
-            }}
-          >
+          <div className="absolute left-0 top-0 bottom-0 w-8 z-10 flex items-center justify-start pointer-events-none">
             <button 
               onClick={scrollPrev}
               className="pointer-events-auto ml-1 p-1.5 rounded-full bg-background/80 backdrop-blur-sm border border-border/50 shadow-sm opacity-70 hover:opacity-100 transition-opacity animate-[pulse_2s_ease-in-out_infinite]"
@@ -226,14 +221,9 @@ export function MobileDiagnosticCarousel({
           </div>
         )}
 
-        {/* Right edge gradient + arrow (shows more cards to right) */}
+        {/* Right arrow (shows more cards to right) */}
         {canScrollNext && (
-          <div 
-            className="absolute right-0 top-0 bottom-0 w-12 z-10 flex items-center justify-end pointer-events-none"
-            style={{
-              background: 'linear-gradient(to left, hsl(var(--background)) 0%, transparent 100%)'
-            }}
-          >
+          <div className="absolute right-0 top-0 bottom-0 w-8 z-10 flex items-center justify-end pointer-events-none">
             <button 
               onClick={scrollNext}
               className="pointer-events-auto mr-1 p-1.5 rounded-full bg-background/80 backdrop-blur-sm border border-border/50 shadow-sm opacity-70 hover:opacity-100 transition-opacity animate-[pulse_2s_ease-in-out_infinite]"

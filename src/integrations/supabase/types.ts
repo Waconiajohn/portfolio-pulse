@@ -14,16 +14,238 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      holdings: {
+        Row: {
+          account_id: string | null
+          account_type: string | null
+          asset_class: string | null
+          cost_basis: number | null
+          created_at: string | null
+          current_price: number
+          expense_ratio: number | null
+          id: string
+          is_manual_entry: boolean | null
+          last_updated: string | null
+          name: string | null
+          sector: string | null
+          shares: number
+          ticker: string
+          user_id: string
+        }
+        Insert: {
+          account_id?: string | null
+          account_type?: string | null
+          asset_class?: string | null
+          cost_basis?: number | null
+          created_at?: string | null
+          current_price?: number
+          expense_ratio?: number | null
+          id?: string
+          is_manual_entry?: boolean | null
+          last_updated?: string | null
+          name?: string | null
+          sector?: string | null
+          shares?: number
+          ticker: string
+          user_id: string
+        }
+        Update: {
+          account_id?: string | null
+          account_type?: string | null
+          asset_class?: string | null
+          cost_basis?: number | null
+          created_at?: string | null
+          current_price?: number
+          expense_ratio?: number | null
+          id?: string
+          is_manual_entry?: boolean | null
+          last_updated?: string | null
+          name?: string | null
+          sector?: string | null
+          shares?: number
+          ticker?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "holdings_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "linked_accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "holdings_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      income_sources: {
+        Row: {
+          created_at: string | null
+          guaranteed_for_life: boolean | null
+          id: string
+          inflation_adj: boolean | null
+          monthly_amount: number
+          source_name: string
+          source_type: string
+          start_age: number
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          guaranteed_for_life?: boolean | null
+          id?: string
+          inflation_adj?: boolean | null
+          monthly_amount?: number
+          source_name: string
+          source_type: string
+          start_age: number
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          guaranteed_for_life?: boolean | null
+          id?: string
+          inflation_adj?: boolean | null
+          monthly_amount?: number
+          source_name?: string
+          source_type?: string
+          start_age?: number
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "income_sources_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      linked_accounts: {
+        Row: {
+          account_mask: string | null
+          account_name: string | null
+          account_type: string | null
+          created_at: string | null
+          id: string
+          institution_id: string | null
+          institution_name: string | null
+          last_sync_at: string | null
+          plaid_access_token_encrypted: string | null
+          plaid_item_id: string | null
+          sync_status: string | null
+          user_id: string
+        }
+        Insert: {
+          account_mask?: string | null
+          account_name?: string | null
+          account_type?: string | null
+          created_at?: string | null
+          id?: string
+          institution_id?: string | null
+          institution_name?: string | null
+          last_sync_at?: string | null
+          plaid_access_token_encrypted?: string | null
+          plaid_item_id?: string | null
+          sync_status?: string | null
+          user_id: string
+        }
+        Update: {
+          account_mask?: string | null
+          account_name?: string | null
+          account_type?: string | null
+          created_at?: string | null
+          id?: string
+          institution_id?: string | null
+          institution_name?: string | null
+          last_sync_at?: string | null
+          plaid_access_token_encrypted?: string | null
+          plaid_item_id?: string | null
+          sync_status?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "linked_accounts_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profiles: {
+        Row: {
+          created_at: string | null
+          date_of_birth: string | null
+          id: string
+          name: string | null
+          risk_tolerance: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          date_of_birth?: string | null
+          id: string
+          name?: string | null
+          risk_tolerance?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          date_of_birth?: string | null
+          id?: string
+          name?: string | null
+          risk_tolerance?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      user_roles: {
+        Row: {
+          created_at: string | null
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
     }
     Enums: {
-      [_ in never]: never
+      app_role: "admin" | "user"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +372,8 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      app_role: ["admin", "user"],
+    },
   },
 } as const

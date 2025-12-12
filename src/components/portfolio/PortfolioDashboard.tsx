@@ -156,8 +156,8 @@ export function PortfolioDashboard() {
   }, [holdings, clientInfo, checklist, scoringConfig, adviceModel, advisorFee, lifetimeIncomeInputs]);
 
   const cardContracts = useMemo(
-    () => (analysis ? buildCardContracts(analysis) : []),
-    [analysis]
+    () => (analysis ? buildCardContracts(analysis, holdings) : []),
+    [analysis, holdings]
   );
 
   const actionPlan = useMemo(() => buildActionPlan(cardContracts, 6), [cardContracts]);

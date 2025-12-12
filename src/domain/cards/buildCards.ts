@@ -1,5 +1,5 @@
 // src/domain/cards/buildCards.ts
-import type { PortfolioAnalysis, Recommendation } from "@/types/portfolio";
+import type { PortfolioAnalysis, Recommendation, Holding } from "@/types/portfolio";
 import type { CardContract, CardAction } from "./types";
 import { computeSeverity } from "./severityPolicy";
 
@@ -75,7 +75,122 @@ const WHY: Partial<Record<CardContract["id"], string>> = {
     "Metrics like Sharpe and drawdown help you compare strategies on a consistent, risk-aware basis.",
 };
 
-export function buildCardContracts(analysis: PortfolioAnalysis): CardContract[] {
+type AccountBucket = "Brokerage" | "Traditional IRA" | "Roth IRA" | "Unknown";
+
+function inferAccountBucket(holding: Holding): AccountBucket {
+  const name = (holding.name || "").toLowerCase();
+  
+  if (holding.accountType === "Taxable") {
+    return "Brokerage";
+  }
+  
+  // Tax-Advantaged: check name for Roth vs Traditional
+  if (name.includes("roth")) {
+    return "Roth IRA";
+  }
+  if (name.includes("trad ira") || name.includes("traditional") || name.includes("[trad ira]")) {
+    return "Traditional IRA";
+  }
+  // Default Tax-Advantaged to Traditional IRA
+  return "Traditional IRA";
+}
+
+interface AccountMetrics {
+  bucket: AccountBucket;
+  totalValue: number;
+  topHoldingPct: number;
+  weightedExpenseRatio: number;
+  holdings: Holding[];
+}
+
+function computeAccountMetrics(holdings: Holding[]): AccountMetrics[] {
+  const buckets: Record<AccountBucket, Holding[]> = {
+    "Brokerage": [],
+    "Traditional IRA": [],
+    "Roth IRA": [],
+    "Unknown": [],
+  };
+
+  holdings.forEach(h => {
+    const bucket = inferAccountBucket(h);
+    buckets[bucket].push(h);
+  });
+
+  return (Object.keys(buckets) as AccountBucket[])
+    .filter(bucket => buckets[bucket].length > 0)
+    .map(bucket => {
+      const acctHoldings = buckets[bucket];
+      const totalValue = acctHoldings.reduce((sum, h) => sum + h.shares * h.currentPrice, 0);
+      
+      // Top holding percentage
+      const holdingValues = acctHoldings.map(h => h.shares * h.currentPrice);
+      const topHoldingValue = Math.max(...holdingValues, 0);
+      const topHoldingPct = totalValue > 0 ? (topHoldingValue / totalValue) * 100 : 0;
+      
+      // Weighted expense ratio
+      let weightedER = 0;
+      if (totalValue > 0) {
+        acctHoldings.forEach(h => {
+          const value = h.shares * h.currentPrice;
+          const er = h.expenseRatio ?? 0;
+          weightedER += (value / totalValue) * er;
+        });
+      }
+
+      return {
+        bucket,
+        totalValue,
+        topHoldingPct,
+        weightedExpenseRatio: weightedER,
+        holdings: acctHoldings,
+      };
+    });
+}
+
+function getAccountContextForDiagnostic(
+  id: CardContract["id"],
+  holdings: Holding[],
+  status: string
+): string | undefined {
+  // Only add context for holdings-related diagnostics with issues
+  if (status === "GREEN" || holdings.length === 0) return undefined;
+
+  const accountMetrics = computeAccountMetrics(holdings);
+  if (accountMetrics.length <= 1) return undefined; // No point if single account
+
+  switch (id) {
+    case "riskDiversification": {
+      // Find account with highest concentration (top holding %)
+      const sorted = [...accountMetrics].sort((a, b) => b.topHoldingPct - a.topHoldingPct);
+      const worst = sorted[0];
+      if (worst && worst.topHoldingPct > 25) {
+        return `Primary driver: ${worst.bucket}`;
+      }
+      break;
+    }
+    case "costAnalysis": {
+      // Find account with highest weighted expense ratio
+      const sorted = [...accountMetrics].sort((a, b) => b.weightedExpenseRatio - a.weightedExpenseRatio);
+      const worst = sorted[0];
+      if (worst && worst.weightedExpenseRatio > 0.002) { // > 0.2%
+        return `Primary driver: ${worst.bucket}`;
+      }
+      break;
+    }
+    case "taxEfficiency": {
+      // Prioritize Brokerage (taxable) since that's where tax efficiency matters most
+      const brokerage = accountMetrics.find(a => a.bucket === "Brokerage");
+      if (brokerage && brokerage.holdings.length > 0) {
+        return "Primary driver: Brokerage";
+      }
+      break;
+    }
+  }
+
+  return undefined;
+}
+
+export function buildCardContracts(analysis: PortfolioAnalysis, holdings: Holding[] = []): CardContract[] {
   const cards: CardContract[] = [];
 
   (Object.keys(analysis.diagnostics) as Array<keyof PortfolioAnalysis["diagnostics"]>).forEach((id) => {
@@ -83,6 +198,9 @@ export function buildCardContracts(analysis: PortfolioAnalysis): CardContract[] 
 
     // Pull any recommendations belonging to this diagnostic category
     const recs: Recommendation[] = (analysis.recommendations || []).filter((x) => x.category === id);
+
+    // Compute account-aware context
+    const contextLabel = getAccountContextForDiagnostic(id, holdings, r.status);
 
     cards.push({
       id,
@@ -94,6 +212,7 @@ export function buildCardContracts(analysis: PortfolioAnalysis): CardContract[] 
       keyFinding: r.keyFinding,
       headlineMetric: r.headlineMetric,
       details: r.details,
+      contextLabel,
       severity: computeSeverity({ id, status: r.status, score: r.score, details: r.details }),
       recommendations: recs,
       actions: defaultActionsFor(id),

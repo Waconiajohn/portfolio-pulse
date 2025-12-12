@@ -34,6 +34,9 @@ export type CardContract = {
   headlineMetric: string;
   details: Record<string, unknown>;
 
+  // Account-aware context (e.g., "Primary driver: Roth IRA")
+  contextLabel?: string;
+
   // Additions to support your "extremes + actions" vision
   severity: CardSeverity;
   recommendations: Recommendation[];

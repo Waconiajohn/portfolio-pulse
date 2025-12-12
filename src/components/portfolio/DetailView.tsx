@@ -1416,6 +1416,14 @@ export function DetailView({
               <div>
                 <div className="text-sm font-medium mb-1">Why it matters</div>
                 <div className="text-sm text-muted-foreground">{card.whyItMatters}</div>
+                {card.contextLabel && (
+                  <div className="mt-2 p-2 rounded-md bg-primary/10 border border-primary/20">
+                    <span className="text-sm font-medium text-primary">{card.contextLabel}</span>
+                    <span className="text-sm text-muted-foreground ml-1">
+                      — consider focusing improvements here first.
+                    </span>
+                  </div>
+                )}
               </div>
 
               {card.actions?.length > 0 && (

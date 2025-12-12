@@ -42,7 +42,10 @@ export function detectShockAlert(cards: CardContract[]): ShockAlert | null {
 
   // Pick top drivers: prefer EXTREME cards, otherwise RED cards
   const driversSource = extremeCards.length > 0 ? extremeCards : redCards;
-  const drivers = driversSource
+  const sortedDrivers = driversSource
+    .slice()
+    .sort((a, b) => (a.score ?? 100) - (b.score ?? 100));
+  const drivers = sortedDrivers
     .slice(0, 3)
     .map(toDriverLine)
     .filter(Boolean);

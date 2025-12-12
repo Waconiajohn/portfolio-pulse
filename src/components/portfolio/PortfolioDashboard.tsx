@@ -33,7 +33,7 @@ import { DiagnosticCard } from './DiagnosticCard';
 import { PerformanceMetricsCard } from './PerformanceMetricsCard';
 import { OnboardingWizard } from './OnboardingWizard';
 import { DetailView } from './DetailView';
-import { LifetimeIncomePanel } from './LifetimeIncomePanel';
+
 import { EfficientFrontierChart } from './EfficientFrontierChart';
 import { StressTestChart } from './StressTestChart';
 import { AssetAllocationChart } from './AssetAllocationChart';
@@ -311,11 +311,6 @@ export function PortfolioDashboard() {
           <CompliancePanel clientName={clientInfo.name} />
         </>
       )}
-      
-      <LifetimeIncomePanel
-        inputs={lifetimeIncomeInputs}
-        onUpdate={setLifetimeIncomeInputs}
-      />
     </div>
   );
 

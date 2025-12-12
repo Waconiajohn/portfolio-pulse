@@ -5,12 +5,13 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { ChevronDown } from "lucide-react";
+import { ChevronDown, X } from "lucide-react";
 import type { ShockAlert } from "@/domain/shock/types";
 
 type Props = {
   alert: ShockAlert;
   onExplain?: () => void;
+  onDismiss?: () => void;
 };
 
 function badgeVariant(sev: ShockAlert["severity"]) {
@@ -18,7 +19,7 @@ function badgeVariant(sev: ShockAlert["severity"]) {
   return "secondary";
 }
 
-export default function ShockAlertCard({ alert, onExplain }: Props) {
+export default function ShockAlertCard({ alert, onExplain, onDismiss }: Props) {
   const navigate = useNavigate();
   const [isExpanded, setIsExpanded] = useState(false);
 
@@ -59,6 +60,18 @@ export default function ShockAlertCard({ alert, onExplain }: Props) {
               >
                 <ChevronDown className="h-4 w-4 text-muted-foreground" />
               </motion.div>
+              {onDismiss && (
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onDismiss();
+                  }}
+                  className="p-1 rounded-sm hover:bg-muted transition-colors"
+                  aria-label="Dismiss alert"
+                >
+                  <X className="h-4 w-4 text-muted-foreground" />
+                </button>
+              )}
             </div>
           </div>
         </CardHeader>

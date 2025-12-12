@@ -110,6 +110,7 @@ export function PortfolioDashboard() {
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [isShockDismissed, setIsShockDismissed] = useState(false);
 
   // Sync profile data to clientInfo when profile loads
   useEffect(() => {
@@ -163,6 +164,13 @@ export function PortfolioDashboard() {
   const actionPlan = useMemo(() => buildActionPlan(cardContracts, 6), [cardContracts]);
 
   const shockAlert = useMemo(() => detectShockAlert(cardContracts), [cardContracts]);
+
+  // Reset shock dismissal when alert meaningfully changes
+  useEffect(() => {
+    if (shockAlert) {
+      setIsShockDismissed(false);
+    }
+  }, [shockAlert?.severity, shockAlert?.primaryCategoryKey, shockAlert?.message]);
 
   const selectedCard = useMemo(
     () => getCardById(cardContracts, selectedCategory),
@@ -451,12 +459,13 @@ export function PortfolioDashboard() {
                 />
               ) : (
                 <div className="space-y-4 sm:space-y-6">
-                  {shockAlert && (
+                  {shockAlert && !isShockDismissed && (
                     <ShockAlertCard
                       alert={shockAlert}
                       onExplain={() => {
                         if (shockAlert.primaryCategoryKey) setSelectedCategory(String(shockAlert.primaryCategoryKey));
                       }}
+                      onDismiss={() => setIsShockDismissed(true)}
                     />
                   )}
                   <SummaryCard healthScore={analysis?.healthScore} actionPlan={actionPlan} />
@@ -571,12 +580,13 @@ export function PortfolioDashboard() {
                 ) : (
                   <div className="space-y-6">
                     {/* Shock Alert at top of mobile dashboard */}
-                    {shockAlert && (
+                    {shockAlert && !isShockDismissed && (
                       <ShockAlertCard
                         alert={shockAlert}
                         onExplain={() => {
                           if (shockAlert.primaryCategoryKey) setSelectedCategory(String(shockAlert.primaryCategoryKey));
                         }}
+                        onDismiss={() => setIsShockDismissed(true)}
                       />
                     )}
                     

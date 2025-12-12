@@ -175,6 +175,15 @@ function formatCurrency(value: number): string {
   }).format(value);
 }
 
+// Strip redundant account type suffixes from holding names
+function cleanHoldingName(name: string | undefined): string {
+  if (!name) return '';
+  // Remove common account type suffixes in parentheses
+  return name
+    .replace(/\s*\((?:Traditional IRA|Roth IRA|Brokerage|Taxable|Tax-Advantaged|IRA)\)\s*$/i, '')
+    .trim();
+}
+
 function createEmptyHolding(): Holding {
   return {
     id: crypto.randomUUID(),
@@ -451,7 +460,7 @@ export const HoldingsTable = forwardRef<HTMLDivElement, HoldingsTableProps>(func
         </TableCell>
         <TableCell>
           <Input
-            value={holding.name}
+            value={cleanHoldingName(holding.name)}
             onChange={(e) => updateHolding(holding.id, 'name', e.target.value)}
             placeholder="Apple Inc."
             className="h-8"
@@ -483,21 +492,6 @@ export const HoldingsTable = forwardRef<HTMLDivElement, HoldingsTableProps>(func
             placeholder="0.00"
             className={cn('h-8 font-mono text-right', errors[`${holding.id}-costBasis`] && 'border-destructive')}
           />
-        </TableCell>
-        <TableCell>
-          <Select
-            value={holding.accountType}
-            onValueChange={(v) => updateHolding(holding.id, 'accountType', v as AccountType)}
-          >
-            <SelectTrigger className="h-8">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {ACCOUNT_TYPES.map(type => (
-                <SelectItem key={type} value={type}>{type}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
         </TableCell>
         <TableCell>
           <Select
@@ -737,14 +731,13 @@ export const HoldingsTable = forwardRef<HTMLDivElement, HoldingsTableProps>(func
                       <Table>
                         <TableHeader>
                           <TableRow className="bg-muted/50 hover:bg-muted/50">
-                            <TableHead className="w-20 min-w-[80px]">Ticker</TableHead>
-                            <TableHead className="w-28 min-w-[100px]">Name</TableHead>
-                            <TableHead className="w-20 min-w-[80px] text-right">Shares</TableHead>
+                            <TableHead className="w-24 min-w-[90px]">Ticker</TableHead>
+                            <TableHead className="w-36 min-w-[140px]">Name</TableHead>
+                            <TableHead className="w-24 min-w-[90px] text-right">Shares</TableHead>
                             <TableHead className="w-24 min-w-[90px] text-right">Price</TableHead>
                             <TableHead className="w-24 min-w-[90px] text-right">Cost</TableHead>
-                            <TableHead className="w-28 min-w-[100px]">Account</TableHead>
-                            <TableHead className="w-28 min-w-[100px]">Class</TableHead>
-                            <TableHead className="w-24 min-w-[90px] text-right">Value</TableHead>
+                            <TableHead className="w-28 min-w-[110px]">Class</TableHead>
+                            <TableHead className="w-28 min-w-[110px] text-right">Value</TableHead>
                             <TableHead className="w-10 min-w-[40px]"></TableHead>
                           </TableRow>
                         </TableHeader>

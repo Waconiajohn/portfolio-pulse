@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, forwardRef } from 'react';
 import { Holding, AccountType, AssetClass } from '@/types/portfolio';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -12,6 +12,7 @@ import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { inferAccountSubtype, type AccountBucket } from '@/domain/accounts/inferAccountSubtype';
+import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 
 interface HoldingsTableProps {
   holdings: Holding[];
@@ -234,7 +235,7 @@ function parseCSVValue(value: string, field: CSVFieldKey): string | number | und
   }
 }
 
-export function HoldingsTable({ holdings, onUpdate }: HoldingsTableProps) {
+export const HoldingsTable = forwardRef<HTMLDivElement, HoldingsTableProps>(function HoldingsTable({ holdings, onUpdate }, ref) {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [csvDialogOpen, setCsvDialogOpen] = useState(false);
   const [csvState, setCsvState] = useState<CSVMappingState | null>(null);
@@ -539,7 +540,7 @@ export function HoldingsTable({ holdings, onUpdate }: HoldingsTableProps) {
   };
 
   return (
-    <div className="space-y-4">
+    <div ref={ref} className="space-y-4">
       {/* Grand Total Summary */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 p-3 rounded-lg bg-muted/50 border">
         <div>
@@ -731,26 +732,29 @@ export function HoldingsTable({ holdings, onUpdate }: HoldingsTableProps) {
 
                 {/* Account Holdings Table */}
                 <CollapsibleContent className="pt-2">
-                  <div className="rounded-lg border border-border overflow-hidden">
-                    <Table>
-                      <TableHeader>
-                        <TableRow className="bg-muted/50 hover:bg-muted/50">
-                          <TableHead className="w-24">Ticker</TableHead>
-                          <TableHead className="w-32">Name</TableHead>
-                          <TableHead className="w-24 text-right">Shares</TableHead>
-                          <TableHead className="w-28 text-right">Price</TableHead>
-                          <TableHead className="w-28 text-right">Cost Basis</TableHead>
-                          <TableHead className="w-32">Account</TableHead>
-                          <TableHead className="w-32">Asset Class</TableHead>
-                          <TableHead className="w-28 text-right">Value</TableHead>
-                          <TableHead className="w-12"></TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {group.holdings.map(renderHoldingRow)}
-                      </TableBody>
-                    </Table>
-                  </div>
+                  <ScrollArea className="w-full">
+                    <div className="rounded-lg border border-border overflow-hidden min-w-[700px]">
+                      <Table>
+                        <TableHeader>
+                          <TableRow className="bg-muted/50 hover:bg-muted/50">
+                            <TableHead className="w-20 min-w-[80px]">Ticker</TableHead>
+                            <TableHead className="w-28 min-w-[100px]">Name</TableHead>
+                            <TableHead className="w-20 min-w-[80px] text-right">Shares</TableHead>
+                            <TableHead className="w-24 min-w-[90px] text-right">Price</TableHead>
+                            <TableHead className="w-24 min-w-[90px] text-right">Cost</TableHead>
+                            <TableHead className="w-28 min-w-[100px]">Account</TableHead>
+                            <TableHead className="w-28 min-w-[100px]">Class</TableHead>
+                            <TableHead className="w-24 min-w-[90px] text-right">Value</TableHead>
+                            <TableHead className="w-10 min-w-[40px]"></TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {group.holdings.map(renderHoldingRow)}
+                        </TableBody>
+                      </Table>
+                    </div>
+                    <ScrollBar orientation="horizontal" />
+                  </ScrollArea>
                 </CollapsibleContent>
 
                 {/* Divider between sections (except last) */}
@@ -764,4 +768,4 @@ export function HoldingsTable({ holdings, onUpdate }: HoldingsTableProps) {
       )}
     </div>
   );
-}
+});

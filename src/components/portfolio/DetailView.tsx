@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { DiagnosticResult, RiskTolerance, PlanningChecklist, GuaranteedIncomeSource, LifetimeIncomeInputs, GuaranteedIncomeSourceType } from '@/types/portfolio';
+import type { CardContract } from '@/domain/cards/types';
 import { PerformanceMetrics, MetricStatus, METRIC_EDUCATION } from '@/types/performance-metrics';
 import { StatusBadge } from './StatusBadge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -29,6 +30,7 @@ interface DetailViewProps {
   onChecklistUpdate?: (checklist: PlanningChecklist) => void;
   lifetimeIncomeInputs?: LifetimeIncomeInputs;
   onLifetimeIncomeUpdate?: (inputs: LifetimeIncomeInputs) => void;
+  card?: CardContract | null;
 }
 
 const CHART_COLORS = [
@@ -52,7 +54,8 @@ export function DetailView({
   checklist,
   onChecklistUpdate,
   lifetimeIncomeInputs,
-  onLifetimeIncomeUpdate
+  onLifetimeIncomeUpdate,
+  card
 }: DetailViewProps) {
   const { details } = result;
   const educationContent = getEducationContent(scoringConfig, riskTolerance);

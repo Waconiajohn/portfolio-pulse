@@ -729,26 +729,24 @@ export const HoldingsTable = forwardRef<HTMLDivElement, HoldingsTableProps>(func
 
                 {/* Account Holdings Table */}
                 <CollapsibleContent className="pt-2">
-                  <div className="overflow-x-auto">
-                    <div className="rounded-lg border border-border overflow-hidden" style={{ minWidth: '900px' }}>
-                      <Table>
-                        <TableHeader>
-                          <TableRow className="bg-muted/50 hover:bg-muted/50">
-                            <TableHead className="sticky left-0 z-10 bg-muted/50" style={{ width: '100px', minWidth: '100px' }}>Ticker</TableHead>
-                            <TableHead style={{ width: '200px', minWidth: '200px' }}>Name</TableHead>
-                            <TableHead style={{ width: '100px', minWidth: '100px' }} className="text-right">Shares</TableHead>
-                            <TableHead style={{ width: '100px', minWidth: '100px' }} className="text-right">Price</TableHead>
-                            <TableHead style={{ width: '100px', minWidth: '100px' }} className="text-right">Cost</TableHead>
-                            <TableHead style={{ width: '130px', minWidth: '130px' }}>Class</TableHead>
-                            <TableHead style={{ width: '120px', minWidth: '120px' }} className="text-right">Value</TableHead>
-                            <TableHead style={{ width: '50px', minWidth: '50px' }}></TableHead>
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {group.holdings.map(renderHoldingRow)}
-                        </TableBody>
-                      </Table>
-                    </div>
+                  <div className="rounded-lg border border-border overflow-x-auto">
+                    <Table style={{ minWidth: '900px' }}>
+                      <TableHeader>
+                        <TableRow className="bg-muted/50 hover:bg-muted/50">
+                          <TableHead className="sticky left-0 z-10 bg-muted" style={{ width: '100px', minWidth: '100px' }}>Ticker</TableHead>
+                          <TableHead style={{ width: '200px', minWidth: '200px' }}>Name</TableHead>
+                          <TableHead style={{ width: '100px', minWidth: '100px' }} className="text-right">Shares</TableHead>
+                          <TableHead style={{ width: '100px', minWidth: '100px' }} className="text-right">Price</TableHead>
+                          <TableHead style={{ width: '100px', minWidth: '100px' }} className="text-right">Cost</TableHead>
+                          <TableHead style={{ width: '130px', minWidth: '130px' }}>Class</TableHead>
+                          <TableHead style={{ width: '120px', minWidth: '120px' }} className="text-right">Value</TableHead>
+                          <TableHead style={{ width: '50px', minWidth: '50px' }}></TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {group.holdings.map(renderHoldingRow)}
+                      </TableBody>
+                    </Table>
                   </div>
                 </CollapsibleContent>
 

@@ -42,7 +42,12 @@ const CHART_COLORS = [
   'hsl(190, 90%, 50%)',
 ];
 
-export function DetailView({ 
+function severityBadge(sev?: "NORMAL" | "EXTREME") {
+  if (sev === "EXTREME") return <Badge variant="destructive">Extreme</Badge>;
+  return <Badge variant="secondary">Normal</Badge>;
+}
+
+export function DetailView({
   name, 
   categoryKey,
   result, 
@@ -1395,6 +1400,76 @@ export function DetailView({
               </div>
             </div>
           </div>
+        )}
+
+        {card && (
+          <Card className="mb-4">
+            <CardHeader className="pb-2">
+              <div className="flex items-center justify-between gap-3">
+                <CardTitle className="text-base">{card.title}</CardTitle>
+                {severityBadge(card.severity)}
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div>
+                <div className="text-sm font-medium mb-1">Why it matters</div>
+                <div className="text-sm text-muted-foreground">{card.whyItMatters}</div>
+              </div>
+
+              {card.actions?.length > 0 && (
+                <div>
+                  <div className="text-sm font-medium mb-2">Suggested actions</div>
+                  <div className="flex flex-wrap gap-2">
+                    {card.actions.map((a, idx) => (
+                      <Button
+                        key={`${a.kind}-${idx}`}
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          if (a.deepLink) {
+                            window.location.href = a.deepLink;
+                          }
+                        }}
+                      >
+                        {a.label}
+                      </Button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {card.recommendations?.length > 0 && (
+                <div>
+                  <div className="text-sm font-medium mb-2">Recommendations</div>
+                  <ol className="space-y-2">
+                    {card.recommendations
+                      .slice()
+                      .sort((x, y) => (x.priority ?? 99) - (y.priority ?? 99))
+                      .map((r) => (
+                        <li key={r.id} className="rounded-md border p-3">
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="min-w-0">
+                              <div className="text-sm font-medium">{r.title}</div>
+                              {r.description && (
+                                <div className="mt-1 text-sm text-muted-foreground">{r.description}</div>
+                              )}
+                              {r.impact && (
+                                <div className="mt-1 text-xs text-muted-foreground">Impact: {r.impact}</div>
+                              )}
+                            </div>
+                            {typeof r.priority === "number" && (
+                              <Badge variant="outline" className="shrink-0">
+                                Priority {r.priority}
+                              </Badge>
+                            )}
+                          </div>
+                        </li>
+                      ))}
+                  </ol>
+                </div>
+              )}
+            </CardContent>
+          </Card>
         )}
 
         <div className="grid grid-cols-2 gap-4">

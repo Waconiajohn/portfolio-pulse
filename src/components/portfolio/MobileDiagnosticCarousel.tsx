@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import useEmblaCarousel from 'embla-carousel-react';
+import { WheelGesturesPlugin } from 'embla-carousel-wheel-gestures';
 import { DiagnosticResult, RiskTolerance } from '@/types/portfolio';
 import { StatusBadge } from './StatusBadge';
 import { EducationPopup } from './EducationPopup';
@@ -148,7 +149,7 @@ export function MobileDiagnosticCarousel({
     loop: false,
     skipSnaps: false,
     dragFree: false,
-  });
+  }, [WheelGesturesPlugin()]);
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [scrollSnaps, setScrollSnaps] = useState<number[]>([]);
 

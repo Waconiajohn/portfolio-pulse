@@ -272,11 +272,12 @@ export function PortfolioDashboard() {
   }
 
   // Sidebar content (shared between mobile sheet and desktop)
-  const SidebarContent = () => (
+  // On mobile, LinkedAccountsPanel is rendered separately above diagnostic cards
+  const SidebarContent = ({ excludeLinkedAccounts = false }: { excludeLinkedAccounts?: boolean }) => (
     <div className="space-y-4 sm:space-y-6">
       {isConsumer && (
         <>
-          <LinkedAccountsPanel onHoldingsSync={() => {}} />
+          {!excludeLinkedAccounts && <LinkedAccountsPanel onHoldingsSync={() => {}} />}
           {holdings.length > 0 && (
             <>
               <PerformanceMetricsCard 
@@ -521,6 +522,9 @@ export function PortfolioDashboard() {
                   />
                 ) : (
                   <div className="space-y-6">
+                    {/* Linked Accounts above diagnostic cards on mobile */}
+                    {isConsumer && <LinkedAccountsPanel onHoldingsSync={() => {}} />}
+                    
                     {/* Swipeable Diagnostic Cards Carousel */}
                     <MobileDiagnosticCarousel
                       analysis={analysis}
@@ -529,9 +533,9 @@ export function PortfolioDashboard() {
                       onViewDetails={(key) => setSelectedCategory(key)}
                     />
                     
-                    {/* Inline sidebar content on mobile */}
+                    {/* Inline sidebar content on mobile (excluding LinkedAccountsPanel) */}
                     <div className="pt-2">
-                      <SidebarContent />
+                      <SidebarContent excludeLinkedAccounts />
                     </div>
                   </div>
                 )}

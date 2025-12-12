@@ -1,11 +1,9 @@
 import { ClientInfo, PortfolioAnalysis, Holding } from '@/types/portfolio';
 import { PortfolioAssumptions } from '@/lib/assumptions';
 import { ScoringConfig, AdviceModel } from '@/lib/scoring-config';
-import { HealthScore } from './HealthScore';
 import { MetricCard } from './MetricCard';
 import { SettingsPanel } from './SettingsPanel';
 import { ModeToggle } from './ModeToggle';
-import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { FileDown, ChevronDown, Database, LogIn, LogOut, User } from 'lucide-react';
@@ -165,52 +163,10 @@ export function Header({
           </div>
         </div>
 
-        {/* User info row - simplified for consumer app */}
-        <div className="flex flex-col sm:flex-row sm:flex-wrap sm:items-end gap-3 sm:gap-4 mb-3 sm:mb-4">
-          <div className="flex-1 min-w-0 sm:min-w-[180px] sm:max-w-xs">
-            <label className="text-xs text-muted-foreground uppercase tracking-wider mb-1 block">
-              Your Name
-            </label>
-            <Input
-              value={clientInfo.name}
-              onChange={(e) => onClientInfoChange({ ...clientInfo, name: e.target.value })}
-              placeholder="Enter your name"
-              className="h-9"
-            />
-          </div>
-          <div className="w-full sm:w-40">
-            <label className="text-xs text-muted-foreground uppercase tracking-wider mb-1 block">
-              Date of Birth
-            </label>
-            <Input
-              type="date"
-              value={clientInfo.meetingDate}
-              onChange={(e) => handleDateOfBirthChange(e.target.value)}
-              className="h-9"
-            />
-          </div>
-          {clientInfo.currentAge && (
-            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <span className="font-medium text-foreground">{clientInfo.currentAge}</span>
-              <span>years old</span>
-            </div>
-          )}
-        </div>
 
         {/* Metrics row - responsive scroll on mobile */}
         <div className="pt-2 sm:pt-3 border-t border-border/50 overflow-x-auto -mx-3 px-3 sm:mx-0 sm:px-0">
           <div className="flex items-center gap-4 sm:gap-6 min-w-max sm:min-w-0 sm:flex-wrap">
-            <div className="flex items-center gap-3 sm:gap-4">
-              <HealthScore score={analysis.healthScore} size="sm" />
-              <div>
-                <div className="text-xs text-muted-foreground uppercase tracking-wider">Health Score</div>
-                <div className="text-sm font-medium">
-                  {analysis.healthScore >= 70 ? 'Healthy' : analysis.healthScore >= 40 ? 'Needs Attention' : 'Critical Issues'}
-                </div>
-              </div>
-            </div>
-            
-            <div className="h-10 w-px bg-border hidden sm:block" />
 
             <MetricCard
               label="Portfolio Value"

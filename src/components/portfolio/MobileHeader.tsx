@@ -1,5 +1,4 @@
-import { ClientInfo, PortfolioAnalysis } from '@/types/portfolio';
-import { HealthScore } from './HealthScore';
+import { PortfolioAnalysis } from '@/types/portfolio';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
@@ -30,17 +29,9 @@ export function MobileHeader({ analysis, onSettingsOpen }: MobileHeaderProps) {
   return (
     <header className="border-b border-border bg-card/80 backdrop-blur-md sticky top-0 z-50 safe-area-top">
       <div className="flex items-center justify-between px-4 py-3">
-        {/* Logo & Health Score */}
-        <div className="flex items-center gap-3">
-          <div className="flex items-center gap-2">
-            <HealthScore score={analysis.healthScore} size="sm" />
-            <div>
-              <h1 className="text-base font-semibold tracking-tight">PortfolioGuard</h1>
-              <p className="text-[10px] text-muted-foreground">
-                {analysis.healthScore >= 70 ? 'Healthy' : analysis.healthScore >= 40 ? 'Needs Attention' : 'Critical'}
-              </p>
-            </div>
-          </div>
+        {/* Logo */}
+        <div className="flex items-center gap-2">
+          <h1 className="text-base font-semibold tracking-tight">PortfolioGuard</h1>
         </div>
 
         {/* Right side actions */}

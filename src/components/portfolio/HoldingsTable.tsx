@@ -253,36 +253,39 @@ export function HoldingsTable({ holdings, onUpdate }: HoldingsTableProps) {
     'roth-ira': true,
   });
 
-  // Detect mobile and set initial collapse state
+  // Detect mobile and set initial collapse state (single effect with stable listener)
   useEffect(() => {
+    let initialized = false;
+    
     const checkMobile = () => {
       const mobile = window.matchMedia("(max-width: 640px)").matches;
       setIsMobile(mobile);
+      
+      // Only set initial expanded state on first run
+      if (!initialized) {
+        initialized = true;
+        if (mobile) {
+          // Mobile: only first section (brokerage) expanded
+          setExpandedSections({
+            'brokerage': true,
+            'traditional-ira': false,
+            'roth-ira': false,
+          });
+        } else {
+          // Desktop: all expanded
+          setExpandedSections({
+            'brokerage': true,
+            'traditional-ira': true,
+            'roth-ira': true,
+          });
+        }
+      }
     };
     
     checkMobile();
     window.addEventListener('resize', checkMobile);
     return () => window.removeEventListener('resize', checkMobile);
   }, []);
-
-  // Set initial expanded state based on mobile
-  useEffect(() => {
-    if (isMobile) {
-      // Mobile: only first section (brokerage) expanded
-      setExpandedSections({
-        'brokerage': true,
-        'traditional-ira': false,
-        'roth-ira': false,
-      });
-    } else {
-      // Desktop: all expanded
-      setExpandedSections({
-        'brokerage': true,
-        'traditional-ira': true,
-        'roth-ira': true,
-      });
-    }
-  }, [isMobile]);
 
   const toggleSection = (subtype: AccountSubtype) => {
     setExpandedSections(prev => ({

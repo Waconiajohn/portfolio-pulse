@@ -10,40 +10,40 @@ export type CardCopy = {
 
 export const CARD_COPY: Record<string, CardCopy> = {
   riskDiversification: {
-    title: "Diversification Check",
-    subtitle: "Are you too concentrated in one stock, fund, or sector?",
+    title: "Portfolio Concentration",
+    subtitle: "How spread out your investments really are",
   },
   downsideResilience: {
-    title: "Market Drop Risk",
-    subtitle: "How much could your portfolio fall in a bad market?",
+    title: "Market Drop Protection",
+    subtitle: "How your portfolio may behave in a downturn",
   },
   performanceOptimization: {
-    title: "Performance vs Benchmark",
-    subtitle: "Are you keeping up with the market for your risk level?",
+    title: "Return Efficiency",
+    subtitle: "Are you getting enough return for the risk?",
   },
   costAnalysis: {
-    title: "Fees & Fund Costs",
-    subtitle: "How much fees may be quietly costing you",
+    title: "Investment Fees",
+    subtitle: "Hidden costs reducing long-term growth",
   },
   taxEfficiency: {
-    title: "Tax Efficiency",
-    subtitle: "Are you paying more taxes than you need to?",
+    title: "Tax Drag",
+    subtitle: "How taxes may be reducing returns",
   },
   riskAdjusted: {
-    title: "Risk vs Return",
-    subtitle: "Are you being rewarded for the risk you're taking?",
+    title: "Risk vs Reward Balance",
+    subtitle: "Is your risk paying off?",
   },
   planningGaps: {
-    title: "Planning Checklist",
-    subtitle: "Common money basics that protect your plan",
+    title: "Planning Gaps",
+    subtitle: "Important items that may be missing",
   },
   lifetimeIncomeSecurity: {
-    title: "Retirement Readiness",
-    subtitle: "Will your assets support your spending for life?",
+    title: "Retirement Income Confidence",
+    subtitle: "How secure your long-term income may be",
   },
   performanceMetrics: {
-    title: "Performance Details",
-    subtitle: "Returns, volatility, and drawdowns in one place",
+    title: "Portfolio Performance",
+    subtitle: "How your investments are performing overall",
   },
   crossAccountConcentration: {
     title: "Cross-Account Risk",

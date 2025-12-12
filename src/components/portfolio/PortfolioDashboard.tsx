@@ -47,7 +47,9 @@ import { SettingsPanel } from './SettingsPanel';
 import { buildCardContracts } from '@/domain/cards/buildCards';
 import { getCardById } from '@/domain/cards/getCardById';
 import { buildActionPlan } from '@/domain/summary/buildActionPlan';
+import { detectShockAlert } from "@/domain/shock/shockDetector";
 import SummaryCard from '@/components/portfolio/SummaryCard';
+import ShockAlertCard from "@/components/portfolio/ShockAlertCard";
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Textarea } from '@/components/ui/textarea';
@@ -159,6 +161,8 @@ export function PortfolioDashboard() {
   );
 
   const actionPlan = useMemo(() => buildActionPlan(cardContracts, 6), [cardContracts]);
+
+  const shockAlert = useMemo(() => detectShockAlert(cardContracts), [cardContracts]);
 
   const selectedCard = useMemo(
     () => getCardById(cardContracts, selectedCategory),
@@ -438,6 +442,7 @@ export function PortfolioDashboard() {
                 />
               ) : (
                 <div className="space-y-4 sm:space-y-6">
+                  {shockAlert && <ShockAlertCard alert={shockAlert} />}
                   <SummaryCard healthScore={analysis?.healthScore} actionPlan={actionPlan} />
                   <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 sm:gap-6">
                     <div className="lg:col-span-3">

@@ -5,9 +5,10 @@ import type { ShockAlert, ShockSeverity } from "./types";
 function toDriverLine(card: CardContract): string {
   // Keep it short and human
   const base = card.title || String(card.id);
-  if (card.keyFinding) return `${base}: ${card.keyFinding}`;
-  if (card.headlineMetric) return `${base}: ${card.headlineMetric}`;
-  return base;
+  const contextSuffix = card.contextLabel ? ` (${card.contextLabel})` : "";
+  if (card.keyFinding) return `${base}: ${card.keyFinding}${contextSuffix}`;
+  if (card.headlineMetric) return `${base}: ${card.headlineMetric}${contextSuffix}`;
+  return `${base}${contextSuffix}`;
 }
 
 function mergeActions(cards: CardContract[]): ShockAlert["actions"] {

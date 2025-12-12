@@ -26,6 +26,7 @@ import { EfficientFrontierChart } from './EfficientFrontierChart';
 import { StressTestChart } from './StressTestChart';
 import { AssetAllocationChart } from './AssetAllocationChart';
 import { BenchmarkComparisonChart } from './BenchmarkComparisonChart';
+import { LinkedAccountsPanel } from './LinkedAccountsPanel';
 import { CorrelationHeatmap } from '@/components/charts/CorrelationHeatmap';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -252,6 +253,11 @@ export function PortfolioDashboard() {
 
                 {/* Sidebar */}
                 <div className="space-y-6">
+                  {/* Linked Accounts Panel - Consumer Mode Feature */}
+                  {isConsumer && (
+                    <LinkedAccountsPanel />
+                  )}
+                  
                   {/* Performance Metrics Card - Consumer Mode Feature */}
                   {isConsumer && holdings.length > 0 && (
                     <PerformanceMetricsCard 

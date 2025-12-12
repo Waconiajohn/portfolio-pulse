@@ -554,6 +554,9 @@ export function PortfolioDashboard() {
                   />
                 ) : (
                   <div className="space-y-6">
+                    {/* Shock Alert at top of mobile dashboard */}
+                    {shockAlert && <ShockAlertCard alert={shockAlert} />}
+                    
                     {/* Linked Accounts above diagnostic cards on mobile */}
                     {isConsumer && <LinkedAccountsPanel onHoldingsSync={() => {}} compact />}
                     

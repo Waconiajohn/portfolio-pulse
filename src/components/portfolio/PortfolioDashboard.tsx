@@ -354,10 +354,6 @@ export function PortfolioDashboard() {
           {!excludeLinkedAccounts && <LinkedAccountsPanel onHoldingsSync={() => {}} sampleAccounts={sampleAccounts} />}
           {holdings.length > 0 && (
             <>
-              <PerformanceMetricsCard 
-                metrics={performanceMetrics} 
-                riskTolerance={clientInfo.riskTolerance} 
-              />
               <ConsumerToolsPanel
                 portfolioValue={analysis.totalValue}
                 expenseRatio={analysis.totalFees / (analysis.totalValue || 1)}
@@ -567,10 +563,6 @@ export function PortfolioDashboard() {
                 <AssetAllocationChart holdings={holdings} totalValue={analysis.totalValue} />
               </div>
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
-                <PerformanceMetricsCard 
-                  metrics={performanceMetrics} 
-                  riskTolerance={clientInfo.riskTolerance}
-                />
                 <MonteCarloSimulation portfolioValue={analysis.totalValue} expectedReturn={analysis.expectedReturn} volatility={analysis.volatility} currentAge={clientInfo.currentAge} />
               </div>
             </TabsContent>

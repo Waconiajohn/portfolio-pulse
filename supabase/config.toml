@@ -1,1 +1,16 @@
 project_id = "bgqaafybllkpatiuyafr"
+
+[functions.plaid-create-link-token]
+verify_jwt = true
+
+[functions.plaid-exchange-token]
+verify_jwt = true
+
+[functions.plaid-get-holdings]
+verify_jwt = true
+
+[functions.plaid-sync-accounts]
+verify_jwt = true
+
+[functions.get-fund-data]
+verify_jwt = false

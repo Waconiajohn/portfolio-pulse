@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useEffect } from 'react';
 import { Holding, ClientInfo, PlanningChecklist, PortfolioAnalysis, LifetimeIncomeInputs } from '@/types/portfolio';
 import { analyzePortfolio } from '@/lib/analysis-engine';
 import { DIAGNOSTIC_CATEGORIES } from '@/lib/constants';
@@ -15,11 +15,15 @@ import { SAMPLE_HOLDINGS } from '@/lib/sample-data';
 import { computeCorrelationMatrix, generateSimulatedReturns, analyzeCorrelationIssues, CorrelationMatrixResult } from '@/lib/correlation';
 import { calculateAllPerformanceMetrics } from '@/lib/performance-metrics';
 import { useAppMode } from '@/contexts/AppModeContext';
+import { useAuth } from '@/hooks/useAuth';
+import { useProfile } from '@/hooks/useProfile';
+import { useHoldings } from '@/hooks/useHoldings';
+import { useIncomeSources } from '@/hooks/useIncomeSources';
 import { Header } from './Header';
 import { HoldingsTable } from './HoldingsTable';
 import { DiagnosticCard } from './DiagnosticCard';
 import { PerformanceMetricsCard } from './PerformanceMetricsCard';
-
+import { OnboardingWizard } from './OnboardingWizard';
 import { DetailView } from './DetailView';
 import { LifetimeIncomePanel } from './LifetimeIncomePanel';
 import { EfficientFrontierChart } from './EfficientFrontierChart';
@@ -34,7 +38,9 @@ import { CorrelationHeatmap } from '@/components/charts/CorrelationHeatmap';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Textarea } from '@/components/ui/textarea';
-import { LayoutGrid, Table, FileText, LineChart, Wallet, Link } from 'lucide-react';
+import { LayoutGrid, Table, FileText, LineChart, Menu, X } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { toast } from 'sonner';
 
 const initialClientInfo: ClientInfo = {
@@ -66,8 +72,15 @@ const initialLifetimeIncomeInputs: LifetimeIncomeInputs = {
 
 export function PortfolioDashboard() {
   const { isConsumer, isAdvisor, messaging } = useAppMode();
+  const { user } = useAuth();
+  const { profile, loading: profileLoading, updateProfile, currentAge } = useProfile();
+  const { holdings: dbHoldings, loading: holdingsLoading, bulkUpsertHoldings } = useHoldings();
+  const { incomeSources, loading: incomeLoading, setIncomeSources: setDbIncomeSources } = useIncomeSources();
   
-  const [holdings, setHoldings] = useState<Holding[]>([]);
+  // Local state for holdings (supports both authenticated and unauthenticated use)
+  const [localHoldings, setLocalHoldings] = useState<Holding[]>([]);
+  const holdings = user ? (dbHoldings.length > 0 ? dbHoldings : localHoldings) : localHoldings;
+  
   const [clientInfo, setClientInfo] = useState<ClientInfo>(initialClientInfo);
   const [checklist, setChecklist] = useState<PlanningChecklist>(initialChecklist);
   const [lifetimeIncomeInputs, setLifetimeIncomeInputs] = useState<LifetimeIncomeInputs>(initialLifetimeIncomeInputs);
@@ -78,6 +91,44 @@ export function PortfolioDashboard() {
   const [baseScoringConfig, setBaseScoringConfig] = useState<ScoringConfig>(() => loadScoringConfig());
   const [adviceModel, setAdviceModel] = useState<AdviceModel>('self-directed');
   const [advisorFee, setAdvisorFee] = useState(0);
+  const [showOnboarding, setShowOnboarding] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  // Sync profile data to clientInfo when profile loads
+  useEffect(() => {
+    if (profile) {
+      setClientInfo(prev => ({
+        ...prev,
+        name: profile.name || prev.name,
+        meetingDate: profile.date_of_birth || prev.meetingDate,
+        riskTolerance: profile.risk_tolerance as ClientInfo['riskTolerance'] || prev.riskTolerance,
+        currentAge: currentAge || prev.currentAge,
+      }));
+    }
+  }, [profile, currentAge]);
+
+  // Sync income sources from database
+  useEffect(() => {
+    if (incomeSources.length > 0) {
+      setLifetimeIncomeInputs(prev => ({
+        ...prev,
+        guaranteedSources: incomeSources,
+      }));
+    }
+  }, [incomeSources]);
+
+  // Check if new user needs onboarding
+  useEffect(() => {
+    if (user && profile && !profileLoading && !profile.name && !profile.date_of_birth) {
+      setShowOnboarding(true);
+    }
+  }, [user, profile, profileLoading]);
+
+  // Handle holdings update - sync to database if authenticated
+  const handleHoldingsUpdate = useCallback((newHoldings: Holding[]) => {
+    setLocalHoldings(newHoldings);
+    // Note: For bulk updates, use bulkUpsertHoldings when user is authenticated
+  }, []);
 
   // Apply risk tolerance adjustments to the scoring config
   const scoringConfig = useMemo(() => {
@@ -118,8 +169,25 @@ export function PortfolioDashboard() {
     toast.success('Scoring benchmarks saved');
   }, []);
 
+  // Handle client info changes - sync name/dob/risk to profile if authenticated
+  const handleClientInfoChange = useCallback(async (newClientInfo: ClientInfo) => {
+    setClientInfo(newClientInfo);
+    
+    if (user && profile) {
+      // Sync to database
+      const updates: Record<string, unknown> = {};
+      if (newClientInfo.name !== profile.name) updates.name = newClientInfo.name;
+      if (newClientInfo.meetingDate !== profile.date_of_birth) updates.date_of_birth = newClientInfo.meetingDate;
+      if (newClientInfo.riskTolerance !== profile.risk_tolerance) updates.risk_tolerance = newClientInfo.riskTolerance;
+      
+      if (Object.keys(updates).length > 0) {
+        await updateProfile(updates as Parameters<typeof updateProfile>[0]);
+      }
+    }
+  }, [user, profile, updateProfile]);
+
   const handleLoadSample = useCallback(() => {
-    setHoldings(SAMPLE_HOLDINGS);
+    setLocalHoldings(SAMPLE_HOLDINGS);
     setClientInfo({
       name: 'John & Sarah Smith',
       meetingDate: new Date().toISOString().split('T')[0],
@@ -180,6 +248,61 @@ export function PortfolioDashboard() {
 
   const diagnosticEntries = Object.entries(DIAGNOSTIC_CATEGORIES) as Array<[keyof typeof DIAGNOSTIC_CATEGORIES, typeof DIAGNOSTIC_CATEGORIES[keyof typeof DIAGNOSTIC_CATEGORIES]]>;
 
+  // Show onboarding wizard for new authenticated users
+  if (showOnboarding) {
+    return <OnboardingWizard onComplete={() => setShowOnboarding(false)} />;
+  }
+
+  // Sidebar content (shared between mobile sheet and desktop)
+  const SidebarContent = () => (
+    <div className="space-y-6">
+      {/* Consumer Mode: Linked Accounts & Tools */}
+      {isConsumer && (
+        <>
+          <LinkedAccountsPanel onHoldingsSync={() => {}} />
+          {holdings.length > 0 && (
+            <>
+              <PerformanceMetricsCard 
+                metrics={performanceMetrics} 
+                riskTolerance={clientInfo.riskTolerance} 
+              />
+              <ConsumerToolsPanel
+                portfolioValue={analysis.totalValue}
+                expenseRatio={analysis.totalFees / (analysis.totalValue || 1)}
+                riskTolerance={clientInfo.riskTolerance}
+                volatility={analysis.volatility}
+                expectedReturn={analysis.expectedReturn}
+                currentAge={clientInfo.currentAge}
+              />
+            </>
+          )}
+        </>
+      )}
+
+      {/* Advisor Mode: Client Manager & Compliance */}
+      {isAdvisor && (
+        <>
+          <ClientManager 
+            onSelectClient={(client) => {
+              setClientInfo(prev => ({
+                ...prev,
+                name: client.name,
+                riskTolerance: client.riskTolerance,
+              }));
+              setSidebarOpen(false);
+            }}
+          />
+          <CompliancePanel clientName={clientInfo.name} />
+        </>
+      )}
+      
+      <LifetimeIncomePanel
+        inputs={lifetimeIncomeInputs}
+        onUpdate={setLifetimeIncomeInputs}
+      />
+    </div>
+  );
+
   return (
     <div className="min-h-screen bg-background">
       <Header
@@ -191,7 +314,7 @@ export function PortfolioDashboard() {
         scoringConfig={scoringConfig}
         adviceModel={adviceModel}
         advisorFee={advisorFee}
-        onClientInfoChange={setClientInfo}
+        onClientInfoChange={handleClientInfoChange}
         onAssumptionsChange={handleAssumptionsChange}
         onScoringConfigChange={handleScoringConfigChange}
         onAdviceModelChange={setAdviceModel}
@@ -199,29 +322,46 @@ export function PortfolioDashboard() {
         onLoadSample={handleLoadSample}
       />
 
-      <main className="container mx-auto px-4 py-6">
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="bg-muted/50">
-            <TabsTrigger value="dashboard" className="gap-2">
-              <LayoutGrid size={14} />
-              Dashboard
-            </TabsTrigger>
-            <TabsTrigger value="holdings" className="gap-2">
-              <Table size={14} />
-              Holdings
-            </TabsTrigger>
-            <TabsTrigger value="charts" className="gap-2">
-              <LineChart size={14} />
-              Analytics
-            </TabsTrigger>
-            <TabsTrigger value="notes" className="gap-2">
-              <FileText size={14} />
-              Notes
-            </TabsTrigger>
-          </TabsList>
+      <main className="container mx-auto px-3 sm:px-4 py-4 sm:py-6">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4 sm:space-y-6">
+          {/* Mobile-friendly tab navigation */}
+          <div className="flex items-center gap-2">
+            {/* Mobile sidebar trigger */}
+            <Sheet open={sidebarOpen} onOpenChange={setSidebarOpen}>
+              <SheetTrigger asChild>
+                <Button variant="outline" size="icon" className="lg:hidden shrink-0">
+                  <Menu className="h-4 w-4" />
+                </Button>
+              </SheetTrigger>
+              <SheetContent side="left" className="w-[320px] sm:w-[400px] overflow-y-auto">
+                <div className="pt-6">
+                  <SidebarContent />
+                </div>
+              </SheetContent>
+            </Sheet>
 
-          <TabsContent value="dashboard" className="space-y-6">
-                {selectedCategory ? (
+            <TabsList className="bg-muted/50 flex-1 overflow-x-auto">
+              <TabsTrigger value="dashboard" className="gap-1.5 sm:gap-2 text-xs sm:text-sm">
+                <LayoutGrid size={14} />
+                <span className="hidden xs:inline">Dashboard</span>
+              </TabsTrigger>
+              <TabsTrigger value="holdings" className="gap-1.5 sm:gap-2 text-xs sm:text-sm">
+                <Table size={14} />
+                <span className="hidden xs:inline">Holdings</span>
+              </TabsTrigger>
+              <TabsTrigger value="charts" className="gap-1.5 sm:gap-2 text-xs sm:text-sm">
+                <LineChart size={14} />
+                <span className="hidden xs:inline">Analytics</span>
+              </TabsTrigger>
+              <TabsTrigger value="notes" className="gap-1.5 sm:gap-2 text-xs sm:text-sm">
+                <FileText size={14} />
+                <span className="hidden xs:inline">Notes</span>
+              </TabsTrigger>
+            </TabsList>
+          </div>
+
+          <TabsContent value="dashboard" className="space-y-4 sm:space-y-6">
+            {selectedCategory ? (
               <DetailView
                 name={DIAGNOSTIC_CATEGORIES[selectedCategory as keyof typeof DIAGNOSTIC_CATEGORIES].name}
                 categoryKey={selectedCategory}
@@ -235,10 +375,10 @@ export function PortfolioDashboard() {
                 onChecklistUpdate={setChecklist}
               />
             ) : (
-              <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+              <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 sm:gap-6">
                 {/* Main diagnostic grid */}
                 <div className="lg:col-span-3">
-                  <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3 sm:gap-4">
                     {diagnosticEntries.map(([key, config]) => (
                       <DiagnosticCard
                         key={key}
@@ -254,51 +394,9 @@ export function PortfolioDashboard() {
                   </div>
                 </div>
 
-                {/* Sidebar */}
-                <div className="space-y-6">
-                  {/* Consumer Mode: Linked Accounts & Tools */}
-                  {isConsumer && (
-                    <>
-                      <LinkedAccountsPanel />
-                      {holdings.length > 0 && (
-                        <>
-                          <PerformanceMetricsCard 
-                            metrics={performanceMetrics} 
-                            riskTolerance={clientInfo.riskTolerance} 
-                          />
-                          <ConsumerToolsPanel
-                            portfolioValue={analysis.totalValue}
-                            expenseRatio={analysis.totalFees / (analysis.totalValue || 1)}
-                            riskTolerance={clientInfo.riskTolerance}
-                            volatility={analysis.volatility}
-                            expectedReturn={analysis.expectedReturn}
-                            currentAge={clientInfo.currentAge}
-                          />
-                        </>
-                      )}
-                    </>
-                  )}
-
-                  {/* Advisor Mode: Client Manager & Compliance */}
-                  {isAdvisor && (
-                    <>
-                      <ClientManager 
-                        onSelectClient={(client) => {
-                          setClientInfo(prev => ({
-                            ...prev,
-                            name: client.name,
-                            riskTolerance: client.riskTolerance,
-                          }));
-                        }}
-                      />
-                      <CompliancePanel clientName={clientInfo.name} />
-                    </>
-                  )}
-                  
-                  <LifetimeIncomePanel
-                    inputs={lifetimeIncomeInputs}
-                    onUpdate={setLifetimeIncomeInputs}
-                  />
+                {/* Desktop Sidebar - hidden on mobile */}
+                <div className="hidden lg:block space-y-6">
+                  <SidebarContent />
                 </div>
               </div>
             )}
@@ -306,20 +404,20 @@ export function PortfolioDashboard() {
 
           <TabsContent value="holdings">
             <Card>
-              <CardHeader>
-                <CardTitle>Portfolio Holdings</CardTitle>
+              <CardHeader className="pb-3 sm:pb-6">
+                <CardTitle className="text-base sm:text-lg">Portfolio Holdings</CardTitle>
               </CardHeader>
-              <CardContent>
-                <HoldingsTable holdings={holdings} onUpdate={setHoldings} />
+              <CardContent className="p-3 sm:p-6 pt-0">
+                <HoldingsTable holdings={holdings} onUpdate={handleHoldingsUpdate} />
               </CardContent>
             </Card>
           </TabsContent>
 
-          <TabsContent value="charts" className="space-y-6">
+          <TabsContent value="charts" className="space-y-4 sm:space-y-6">
             {/* Benchmark Comparison - Full Width */}
             <BenchmarkComparisonChart analysis={analysis} initialValue={100000} />
             
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
               <EfficientFrontierChart analysis={analysis} holdings={holdings} />
               <CorrelationHeatmap 
                 data={correlationData} 
@@ -329,41 +427,41 @@ export function PortfolioDashboard() {
                   : 'Good diversification across holdings'}
               />
             </div>
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
               <StressTestChart analysis={analysis} />
               <AssetAllocationChart holdings={holdings} totalValue={analysis.totalValue} />
             </div>
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
               <Card>
-                <CardHeader>
+                <CardHeader className="pb-3">
                   <CardTitle className="text-base">Performance Metrics</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="p-4 rounded-lg bg-muted/30 border border-border">
+                  <div className="grid grid-cols-2 gap-3 sm:gap-4">
+                    <div className="p-3 sm:p-4 rounded-lg bg-muted/30 border border-border">
                       <div className="text-xs text-muted-foreground uppercase tracking-wider">Sharpe Ratio</div>
-                      <div className="font-mono text-2xl font-semibold mt-1">{analysis.sharpeRatio.toFixed(2)}</div>
+                      <div className="font-mono text-xl sm:text-2xl font-semibold mt-1">{analysis.sharpeRatio.toFixed(2)}</div>
                       <div className="text-xs text-muted-foreground mt-1">Target: {scoringConfig.sharpe.portfolioTarget.toFixed(2)}</div>
                     </div>
-                    <div className="p-4 rounded-lg bg-muted/30 border border-border">
+                    <div className="p-3 sm:p-4 rounded-lg bg-muted/30 border border-border">
                       <div className="text-xs text-muted-foreground uppercase tracking-wider">Expected Return</div>
-                      <div className="font-mono text-2xl font-semibold mt-1 value-positive">{(analysis.expectedReturn * 100).toFixed(1)}%</div>
+                      <div className="font-mono text-xl sm:text-2xl font-semibold mt-1 value-positive">{(analysis.expectedReturn * 100).toFixed(1)}%</div>
                       <div className="text-xs text-muted-foreground mt-1">Annualized</div>
                     </div>
-                    <div className="p-4 rounded-lg bg-muted/30 border border-border">
+                    <div className="p-3 sm:p-4 rounded-lg bg-muted/30 border border-border">
                       <div className="text-xs text-muted-foreground uppercase tracking-wider">Volatility</div>
-                      <div className="font-mono text-2xl font-semibold mt-1">{(analysis.volatility * 100).toFixed(1)}%</div>
+                      <div className="font-mono text-xl sm:text-2xl font-semibold mt-1">{(analysis.volatility * 100).toFixed(1)}%</div>
                       <div className="text-xs text-muted-foreground mt-1">Standard Deviation</div>
                     </div>
-                    <div className="p-4 rounded-lg bg-muted/30 border border-border">
+                    <div className="p-3 sm:p-4 rounded-lg bg-muted/30 border border-border">
                       <div className="text-xs text-muted-foreground uppercase tracking-wider">Fee Drag</div>
-                      <div className="font-mono text-2xl font-semibold mt-1 value-negative">
+                      <div className="font-mono text-xl sm:text-2xl font-semibold mt-1 value-negative">
                         {((analysis.totalFees / (analysis.totalValue || 1)) * 100).toFixed(2)}%
                       </div>
                       <div className="text-xs text-muted-foreground mt-1">Annual cost</div>
                     </div>
                   </div>
-                  <div className="p-4 rounded-lg bg-primary/10 border border-primary/20">
+                  <div className="p-3 sm:p-4 rounded-lg bg-primary/10 border border-primary/20">
                     <div className="text-sm font-medium">Optimization Potential</div>
                     <div className="text-xs text-muted-foreground mt-1">
                       Based on current analysis, the portfolio could potentially improve Sharpe ratio by 
@@ -386,15 +484,15 @@ export function PortfolioDashboard() {
 
           <TabsContent value="notes">
             <Card>
-              <CardHeader>
-                <CardTitle>Meeting Notes</CardTitle>
+              <CardHeader className="pb-3 sm:pb-6">
+                <CardTitle className="text-base sm:text-lg">Meeting Notes</CardTitle>
               </CardHeader>
-              <CardContent>
+              <CardContent className="p-3 sm:p-6 pt-0">
                 <Textarea
                   value={notes}
                   onChange={(e) => setNotes(e.target.value)}
                   placeholder="Enter client-specific notes here. These will appear at the end of the exported PDF report."
-                  className="min-h-[300px] font-mono text-sm"
+                  className="min-h-[250px] sm:min-h-[300px] font-mono text-sm"
                 />
               </CardContent>
             </Card>

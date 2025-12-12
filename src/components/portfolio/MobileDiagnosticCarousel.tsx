@@ -7,6 +7,7 @@ import { EducationPopup } from './EducationPopup';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { 
   ChevronRight, 
+  ChevronLeft,
   Shield, 
   ShieldAlert, 
   TrendingUp, 
@@ -19,6 +20,7 @@ import {
   ClipboardCheck,
   Wallet,
   FileQuestion,
+  Activity,
   LucideIcon
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -28,7 +30,7 @@ import { PortfolioAnalysis } from '@/types/portfolio';
 
 const iconMap: Record<string, LucideIcon> = {
   Shield, ShieldAlert, TrendingUp, DollarSign, Receipt, 
-  PieChart, BarChart3, Umbrella, Settings2, ClipboardCheck, Wallet, FileQuestion
+  PieChart, BarChart3, Umbrella, Settings2, ClipboardCheck, Wallet, FileQuestion, Activity
 };
 
 interface MobileDiagnosticCarouselProps {
@@ -79,48 +81,48 @@ function CarouselCard({
       className={cn(
         'h-full border-l-4 touch-manipulation transition-all duration-300',
         getStatusBorderClass(),
-        isActive ? getGlowClass() : 'opacity-70 scale-95',
+        isActive ? getGlowClass() : 'opacity-70 scale-[0.97]',
         isActive && 'scale-100 opacity-100'
       )} 
       onClick={onViewDetails}
     >
       <CardHeader className="pb-2 p-4">
-        <div className="flex items-start justify-between gap-2">
-          <div className="flex items-center gap-2 min-w-0">
-            <div className={cn(
-              "p-2 rounded-lg transition-colors duration-300",
-              isActive ? "bg-primary/20" : "bg-secondary"
-            )}>
-              <IconComponent size={20} className={cn(
-                "transition-colors duration-300",
-                isActive ? "text-primary" : "text-muted-foreground"
-              )} />
-            </div>
-            <div className="flex items-center gap-1 min-w-0">
-              <CardTitle className="text-sm font-medium truncate">{name}</CardTitle>
-              <EducationPopup 
-                categoryKey={categoryKey} 
-                scoringConfig={scoringConfig}
-                riskTolerance={riskTolerance}
-              />
-            </div>
+        {/* Title row with icon and name */}
+        <div className="flex items-center gap-2 mb-2">
+          <div className={cn(
+            "p-2 rounded-lg transition-colors duration-300 shrink-0",
+            isActive ? "bg-primary/20" : "bg-secondary"
+          )}>
+            <IconComponent size={18} className={cn(
+              "transition-colors duration-300",
+              isActive ? "text-primary" : "text-muted-foreground"
+            )} />
           </div>
-          <StatusBadge status={result.status} label={STATUS_LABELS[result.status]} showLabel size="sm" />
+          <div className="flex items-center gap-1 min-w-0 flex-1">
+            <CardTitle className="text-sm font-medium leading-tight">{name}</CardTitle>
+            <EducationPopup 
+              categoryKey={categoryKey} 
+              scoringConfig={scoringConfig}
+              riskTolerance={riskTolerance}
+            />
+          </div>
         </div>
+        {/* Status badge on its own row - horizontal layout */}
+        <StatusBadge status={result.status} label={STATUS_LABELS[result.status]} showLabel size="sm" />
       </CardHeader>
       <CardContent className="p-4 pt-0 space-y-3">
         <p className="text-sm text-muted-foreground line-clamp-2">
           {result.keyFinding}
         </p>
         <div className="flex items-end justify-between gap-2">
-          <div>
+          <div className="min-w-0 flex-1">
             <div className="text-[10px] uppercase tracking-wider text-muted-foreground mb-0.5">Primary Metric</div>
-            <div className="font-mono text-base font-semibold text-foreground">
+            <div className="font-mono text-sm font-semibold text-foreground truncate">
               {result.headlineMetric}
             </div>
           </div>
           <div className={cn(
-            "flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-medium transition-all duration-300",
+            "flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-medium transition-all duration-300 shrink-0",
             isActive 
               ? "bg-primary text-primary-foreground" 
               : "bg-muted text-muted-foreground"
@@ -176,34 +178,83 @@ export function MobileDiagnosticCarousel({
     if (emblaApi) emblaApi.scrollTo(index);
   }, [emblaApi]);
 
+  const canScrollPrev = selectedIndex > 0;
+  const canScrollNext = selectedIndex < diagnosticEntries.length - 1;
+
+  const scrollPrev = useCallback(() => {
+    if (emblaApi) emblaApi.scrollPrev();
+  }, [emblaApi]);
+
+  const scrollNext = useCallback(() => {
+    if (emblaApi) emblaApi.scrollNext();
+  }, [emblaApi]);
+
   return (
     <div className="space-y-4">
-      {/* Carousel */}
-      <div className="overflow-hidden -mx-4 px-4 cursor-grab active:cursor-grabbing" ref={emblaRef}>
-        <div className="flex -ml-3">
-          {diagnosticEntries.map(([key, config], index) => (
-            <div 
-              key={key} 
-              className="flex-[0_0_80%] min-w-0 pl-3"
-              style={{ paddingRight: index === diagnosticEntries.length - 1 ? '1rem' : 0 }}
+      {/* Carousel with edge indicators */}
+      <div className="relative">
+        {/* Left edge gradient + arrow (shows more cards to left) */}
+        {canScrollPrev && (
+          <div 
+            className="absolute left-0 top-0 bottom-0 w-12 z-10 flex items-center justify-start pointer-events-none"
+            style={{
+              background: 'linear-gradient(to right, hsl(var(--background)) 0%, transparent 100%)'
+            }}
+          >
+            <button 
+              onClick={scrollPrev}
+              className="pointer-events-auto ml-1 p-1.5 rounded-full bg-background/80 backdrop-blur-sm border border-border/50 shadow-sm opacity-60 hover:opacity-100 transition-opacity"
+              aria-label="Previous card"
             >
-              <CarouselCard
-                name={config.name}
-                iconName={config.icon}
-                categoryKey={key}
-                result={analysis.diagnostics[key as keyof typeof analysis.diagnostics]}
-                onViewDetails={() => onViewDetails(key)}
-                scoringConfig={scoringConfig}
-                riskTolerance={riskTolerance}
-                isActive={index === selectedIndex}
-              />
-            </div>
-          ))}
+              <ChevronLeft size={16} className="text-muted-foreground" />
+            </button>
+          </div>
+        )}
+
+        {/* Right edge gradient + arrow (shows more cards to right) */}
+        {canScrollNext && (
+          <div 
+            className="absolute right-0 top-0 bottom-0 w-12 z-10 flex items-center justify-end pointer-events-none"
+            style={{
+              background: 'linear-gradient(to left, hsl(var(--background)) 0%, transparent 100%)'
+            }}
+          >
+            <button 
+              onClick={scrollNext}
+              className="pointer-events-auto mr-1 p-1.5 rounded-full bg-background/80 backdrop-blur-sm border border-border/50 shadow-sm opacity-60 hover:opacity-100 transition-opacity"
+              aria-label="Next card"
+            >
+              <ChevronRight size={16} className="text-muted-foreground" />
+            </button>
+          </div>
+        )}
+
+        <div className="overflow-hidden -mx-4 px-4 cursor-grab active:cursor-grabbing" ref={emblaRef}>
+          <div className="flex -ml-3">
+            {diagnosticEntries.map(([key, config], index) => (
+              <div 
+                key={key} 
+                className="flex-[0_0_88%] min-w-0 pl-3"
+                style={{ paddingRight: index === diagnosticEntries.length - 1 ? '1rem' : 0 }}
+              >
+                <CarouselCard
+                  name={config.name}
+                  iconName={config.icon}
+                  categoryKey={key}
+                  result={analysis.diagnostics[key as keyof typeof analysis.diagnostics]}
+                  onViewDetails={() => onViewDetails(key)}
+                  scoringConfig={scoringConfig}
+                  riskTolerance={riskTolerance}
+                  isActive={index === selectedIndex}
+                />
+              </div>
+            ))}
+          </div>
         </div>
       </div>
 
       {/* Pagination Dots */}
-      <div className="flex items-center justify-center gap-2">
+      <div className="flex items-center justify-center gap-1.5">
         {scrollSnaps.map((_, index) => {
           const key = diagnosticEntries[index]?.[0];
           const result = key ? analysis.diagnostics[key as keyof typeof analysis.diagnostics] : null;
@@ -220,10 +271,10 @@ export function MobileDiagnosticCarousel({
               key={index}
               onClick={() => scrollTo(index)}
               className={cn(
-                "h-2 rounded-full transition-all duration-300 touch-manipulation",
+                "h-1.5 rounded-full transition-all duration-300 touch-manipulation",
                 index === selectedIndex 
-                  ? cn("w-6", getDotColor())
-                  : "w-2 bg-muted hover:bg-muted-foreground/30"
+                  ? cn("w-5", getDotColor())
+                  : "w-1.5 bg-muted hover:bg-muted-foreground/30"
               )}
               aria-label={`Go to slide ${index + 1}`}
             />

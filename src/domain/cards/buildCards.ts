@@ -164,7 +164,7 @@ function getAccountContextForDiagnostic(
       const sorted = [...accountMetrics].sort((a, b) => b.topHoldingPct - a.topHoldingPct);
       const worst = sorted[0];
       if (worst && worst.topHoldingPct > 25) {
-        return `Primary driver: ${worst.bucket}`;
+        return worst.bucket;
       }
       break;
     }
@@ -173,7 +173,7 @@ function getAccountContextForDiagnostic(
       const sorted = [...accountMetrics].sort((a, b) => b.weightedExpenseRatio - a.weightedExpenseRatio);
       const worst = sorted[0];
       if (worst && worst.weightedExpenseRatio > 0.002) { // > 0.2%
-        return `Primary driver: ${worst.bucket}`;
+        return worst.bucket;
       }
       break;
     }
@@ -181,7 +181,7 @@ function getAccountContextForDiagnostic(
       // Prioritize Brokerage (taxable) since that's where tax efficiency matters most
       const brokerage = accountMetrics.find(a => a.bucket === "Brokerage");
       if (brokerage && brokerage.holdings.length > 0) {
-        return "Primary driver: Brokerage";
+        return "Brokerage";
       }
       break;
     }

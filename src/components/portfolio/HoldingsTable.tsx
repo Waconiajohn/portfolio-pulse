@@ -453,7 +453,7 @@ export const HoldingsTable = forwardRef<HTMLDivElement, HoldingsTableProps>(func
     
     return (
       <TableRow key={holding.id} className="group">
-        <TableCell>
+        <TableCell className="sticky left-0 z-10 bg-background">
           <Input
             value={holding.ticker}
             onChange={(e) => updateHolding(holding.id, 'ticker', e.target.value.toUpperCase())}
@@ -734,7 +734,7 @@ export const HoldingsTable = forwardRef<HTMLDivElement, HoldingsTableProps>(func
                       <Table>
                         <TableHeader>
                           <TableRow className="bg-muted/50 hover:bg-muted/50">
-                            <TableHead style={{ width: '100px', minWidth: '100px' }}>Ticker</TableHead>
+                            <TableHead className="sticky left-0 z-10 bg-muted/50" style={{ width: '100px', minWidth: '100px' }}>Ticker</TableHead>
                             <TableHead style={{ width: '200px', minWidth: '200px' }}>Name</TableHead>
                             <TableHead style={{ width: '100px', minWidth: '100px' }} className="text-right">Shares</TableHead>
                             <TableHead style={{ width: '100px', minWidth: '100px' }} className="text-right">Price</TableHead>

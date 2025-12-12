@@ -27,6 +27,8 @@ import { StressTestChart } from './StressTestChart';
 import { AssetAllocationChart } from './AssetAllocationChart';
 import { BenchmarkComparisonChart } from './BenchmarkComparisonChart';
 import { LinkedAccountsPanel } from './LinkedAccountsPanel';
+import { ConsumerToolsPanel } from './ConsumerToolsPanel';
+import { ClientManager, CompliancePanel } from './advisor';
 import { CorrelationHeatmap } from '@/components/charts/CorrelationHeatmap';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -253,17 +255,43 @@ export function PortfolioDashboard() {
 
                 {/* Sidebar */}
                 <div className="space-y-6">
-                  {/* Linked Accounts Panel - Consumer Mode Feature */}
+                  {/* Consumer Mode: Linked Accounts & Tools */}
                   {isConsumer && (
-                    <LinkedAccountsPanel />
+                    <>
+                      <LinkedAccountsPanel />
+                      {holdings.length > 0 && (
+                        <>
+                          <PerformanceMetricsCard 
+                            metrics={performanceMetrics} 
+                            riskTolerance={clientInfo.riskTolerance} 
+                          />
+                          <ConsumerToolsPanel
+                            portfolioValue={analysis.totalValue}
+                            expenseRatio={analysis.totalFees / (analysis.totalValue || 1)}
+                            riskTolerance={clientInfo.riskTolerance}
+                            volatility={analysis.volatility}
+                            expectedReturn={analysis.expectedReturn}
+                            currentAge={clientInfo.currentAge}
+                          />
+                        </>
+                      )}
+                    </>
                   )}
-                  
-                  {/* Performance Metrics Card - Consumer Mode Feature */}
-                  {isConsumer && holdings.length > 0 && (
-                    <PerformanceMetricsCard 
-                      metrics={performanceMetrics} 
-                      riskTolerance={clientInfo.riskTolerance} 
-                    />
+
+                  {/* Advisor Mode: Client Manager & Compliance */}
+                  {isAdvisor && (
+                    <>
+                      <ClientManager 
+                        onSelectClient={(client) => {
+                          setClientInfo(prev => ({
+                            ...prev,
+                            name: client.name,
+                            riskTolerance: client.riskTolerance,
+                          }));
+                        }}
+                      />
+                      <CompliancePanel clientName={clientInfo.name} />
+                    </>
                   )}
                   
                   <LifetimeIncomePanel

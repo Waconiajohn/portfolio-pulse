@@ -246,6 +246,12 @@ export interface EducationContent {
   goodVsBad: string;
   interpretation: string;
   riskToleranceNote?: string;
+  // NEW: Consumer-friendly education
+  consumerBrief?: string;
+  consumerDetailed?: string;
+  whyItMatters?: string;
+  howToImprove?: string[];
+  peerComparison?: string;
 }
 
 export function getEducationContent(
@@ -263,6 +269,16 @@ export function getEducationContent(
         : riskTolerance === 'Aggressive'
         ? 'As an Aggressive investor, you can tolerate higher concentration, but position limits still matter for tail risk.'
         : 'As a Moderate investor, balance is key—reasonable concentration with moderate volatility.',
+      // Consumer-friendly content
+      consumerBrief: '🎯 Your portfolio might be too concentrated in a few investments.',
+      consumerDetailed: 'Concentration risk means a few investments dominate your portfolio. If one underperforms, you suffer. Spreading your money across different investments protects you.',
+      whyItMatters: 'If 50% of your portfolio is one stock and it drops 20%, your entire portfolio drops 10%. That\'s a lot of your savings at risk!',
+      howToImprove: [
+        'Trim your largest position if it\'s over 10% of your portfolio',
+        'Add investments in different sectors and asset classes',
+        'Consider broad index funds for instant diversification'
+      ],
+      peerComparison: 'Most investors keep their largest position under 10%. If yours is higher, you may be taking unnecessary risk.',
     },
 
     downsideResilience: {
@@ -275,6 +291,15 @@ export function getEducationContent(
         : riskTolerance === 'Aggressive'
         ? 'Your Aggressive profile accepts more crash exposure, but critical vulnerabilities still warrant review.'
         : 'As a Moderate investor, balance protection and growth—no single category should be at critical levels.',
+      consumerBrief: '📉 How well would your portfolio survive a market crash?',
+      consumerDetailed: 'We test your portfolio against past crises like 2008 and 2020 to see how much you might lose in the next downturn.',
+      whyItMatters: 'Market crashes happen every 7-10 years on average. Knowing your exposure helps you prepare emotionally and financially.',
+      howToImprove: [
+        'Add bonds or stable assets to cushion against crashes',
+        'Keep 6-12 months expenses in cash for emergencies',
+        'Diversify across countries, not just US stocks'
+      ],
+      peerComparison: 'The average investor lost 35% in 2008. With proper diversification, you can reduce that significantly.',
     },
 
     performanceOptimization: {
@@ -282,6 +307,15 @@ export function getEducationContent(
       whatItMeasures: `Combines return efficiency (Sharpe ratio measuring return per unit of risk) with optimization potential (how much improvement is possible through rebalancing and fee reduction). Target Sharpe: ${config.sharpe.portfolioTarget.toFixed(2)}.`,
       goodVsBad: `GOOD: Sharpe ≥90% of target with limited optimization upside (<10%). POOR: Sharpe <70% of target and/or >15% improvement potential indicates inefficient portfolio positioning.`,
       interpretation: 'Holdings are labeled based on individual Sharpe ratios. POOR holdings (<70% of target) drag down portfolio efficiency. Optimization potential shows actionable improvements through rebalancing, fee reduction, or replacing inefficient holdings.',
+      consumerBrief: '📈 Are you getting enough return for the risk you\'re taking?',
+      consumerDetailed: 'The Sharpe ratio measures whether your investments are worth the risk. A higher ratio means your money is working harder.',
+      whyItMatters: 'You shouldn\'t take on more risk than necessary. If you can get the same return with less volatility, that\'s a win.',
+      howToImprove: [
+        'Replace high-cost funds with low-cost index alternatives',
+        'Rebalance to your target allocation quarterly',
+        'Remove underperforming holdings that drag down returns'
+      ],
+      peerComparison: 'Top-performing portfolios have Sharpe ratios above 0.50. Below 0.35 means there\'s room for improvement.',
     },
 
     costAnalysis: {
@@ -289,6 +323,15 @@ export function getEducationContent(
       whatItMeasures: 'Calculates total annual fees including fund expense ratios and advisor fees. Fees compound over time and directly reduce your returns.',
       goodVsBad: `GOOD/BAD thresholds depend on your advice model:\n• Self-Directed: ${(config.fees['self-directed'].greenMax * 100).toFixed(2)}% or less is good\n• Advisor Passive: ${(config.fees['advisor-passive'].greenMax * 100).toFixed(2)}% or less is good\n• Advisor Tactical: ${(config.fees['advisor-tactical'].greenMax * 100).toFixed(2)}% or less is good`,
       interpretation: 'A 1% fee difference over 20 years can reduce your ending balance by 20% or more. Ensure fees are justified by the value received.',
+      consumerBrief: '💸 Hidden fees could be eating your returns.',
+      consumerDetailed: 'Every dollar you pay in fees is a dollar that doesn\'t grow for your future. Small percentages add up to big money over decades.',
+      whyItMatters: 'A 1% annual fee might not sound like much, but over 30 years it can cost you $150,000+ on a $500,000 portfolio.',
+      howToImprove: [
+        'Switch to index funds with expense ratios under 0.10%',
+        'Avoid funds with sales loads or 12b-1 fees',
+        'If using an advisor, ensure their fee is justified by value'
+      ],
+      peerComparison: 'Smart investors pay under 0.25% in total fees. The industry average is closer to 1%.',
     },
 
     taxEfficiency: {
@@ -296,6 +339,15 @@ export function getEducationContent(
       whatItMeasures: 'Identifies tax-loss harvesting opportunities (in taxable accounts only) and flags tax-inefficient asset placement.',
       goodVsBad: 'GOOD: Tax-inefficient assets (bonds, REITs) held in tax-advantaged accounts; losses harvested regularly. BAD: Bonds generating taxable interest in brokerage accounts; unharvested losses left on the table.',
       interpretation: 'Tax-loss harvesting applies ONLY to taxable/brokerage accounts—not IRAs or 401(k)s. Harvested losses can offset gains and up to $3,000 of ordinary income annually. Watch for wash sale rules.',
+      consumerBrief: '🏦 You might be leaving tax savings on the table.',
+      consumerDetailed: 'Smart investors use losses strategically to reduce their tax bill. It\'s legal and can save you thousands each year.',
+      whyItMatters: 'Tax-loss harvesting can save you 20-30% on capital gains taxes. That\'s money back in your pocket.',
+      howToImprove: [
+        'Sell losing positions to offset gains (tax-loss harvesting)',
+        'Put bonds and REITs in IRAs, not taxable accounts',
+        'Reinvest harvested proceeds in similar (not identical) funds'
+      ],
+      peerComparison: 'Active investors save $2,000-$5,000/year through tax-loss harvesting. Many investors miss this opportunity.',
     },
 
     riskAdjusted: {
@@ -308,6 +360,15 @@ export function getEducationContent(
         : riskTolerance === 'Aggressive'
         ? 'Aggressive investors may accept lower probability in exchange for higher upside.'
         : undefined,
+      consumerBrief: '🎯 Will you reach your retirement goal?',
+      consumerDetailed: 'We run thousands of simulations to estimate your odds of success. It\'s like a weather forecast for your financial future.',
+      whyItMatters: 'Knowing your probability helps you make adjustments while there\'s still time.',
+      howToImprove: [
+        'Increase your savings rate by even 1-2%',
+        'Consider delaying retirement by 1-2 years if needed',
+        'Reduce your goal or find ways to lower expenses'
+      ],
+      peerComparison: 'Successful retirees typically had 75%+ probability before retiring. Below 50% requires significant changes.',
     },
 
     planningGaps: {
@@ -315,6 +376,15 @@ export function getEducationContent(
       whatItMeasures: 'Tracks completion of 11 essential planning items: estate documents, healthcare directives, POA, beneficiaries, executor/guardian designations, insurance, emergency fund, withdrawal strategy, and investment policy statement.',
       goodVsBad: `GOOD: ${config.planningGaps.greenMinComplete}+ of 11 items complete, especially critical items (will, healthcare directives, POA, emergency fund). BAD: Critical gaps in estate planning or no emergency fund leave you exposed to unnecessary risk.`,
       interpretation: 'Financial planning is more than investments. Missing documents can cause family hardship and unnecessary costs during difficult times. ASAP items should be addressed immediately.',
+      consumerBrief: '📋 Important documents might be missing from your plan.',
+      consumerDetailed: 'A complete financial plan includes more than investments—it covers emergencies, estate planning, and protecting your family.',
+      whyItMatters: 'Without proper documents, your family could face expensive legal battles and delays when they need money most.',
+      howToImprove: [
+        'Create or update your will and beneficiary designations',
+        'Set up healthcare directives and power of attorney',
+        'Build an emergency fund covering 6+ months of expenses'
+      ],
+      peerComparison: 'Only 40% of Americans have a will. Be among the prepared—your family will thank you.',
     },
 
     lifetimeIncomeSecurity: {
@@ -322,6 +392,15 @@ export function getEducationContent(
       whatItMeasures: 'Measures how well guaranteed income sources (Social Security, pensions, annuities) cover your core living expenses for life.',
       goodVsBad: `GOOD: ${(config.lifetimeIncomeSecurity.coreCoverageGreen * 100).toFixed(0)}%+ of core expenses covered by guaranteed income. CAUTION: ${(config.lifetimeIncomeSecurity.coreCoverageYellow * 100).toFixed(0)}-${(config.lifetimeIncomeSecurity.coreCoverageGreen * 100).toFixed(0)}% coverage. BAD: <${(config.lifetimeIncomeSecurity.coreCoverageYellow * 100).toFixed(0)}% means basic lifestyle depends on market performance.`,
       interpretation: 'When guaranteed income covers core expenses, market volatility becomes irrelevant for your essential lifestyle. This fundamentally changes your risk capacity and investment strategy.',
+      consumerBrief: '🏠 Can you cover basic expenses without touching investments?',
+      consumerDetailed: 'If Social Security and pensions cover your essential bills, you\'re protected even if markets crash. That\'s financial security.',
+      whyItMatters: 'Guaranteed income means you won\'t have to sell investments at the worst time—during a market downturn.',
+      howToImprove: [
+        'Delay Social Security to age 70 for a 24-32% higher benefit',
+        'Consider a partial annuity to create more guaranteed income',
+        'Reduce core expenses to improve coverage ratio'
+      ],
+      peerComparison: 'Retirees with 100%+ core expense coverage report much lower financial stress.',
     },
   };
 }

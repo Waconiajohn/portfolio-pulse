@@ -45,6 +45,7 @@ import { MonteCarloSimulation } from './MonteCarloSimulation';
 import { CorrelationHeatmap } from '@/components/charts/CorrelationHeatmap';
 import { SettingsPanel } from './SettingsPanel';
 import { buildCardContracts } from '@/domain/cards/buildCards';
+import { buildActionPlan } from '@/domain/summary/buildActionPlan';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Textarea } from '@/components/ui/textarea';
@@ -154,6 +155,8 @@ export function PortfolioDashboard() {
     () => (analysis ? buildCardContracts(analysis) : []),
     [analysis]
   );
+
+  const actionPlan = useMemo(() => buildActionPlan(cardContracts, 6), [cardContracts]);
 
   // Calculate advanced performance metrics
   const performanceMetrics = useMemo(() => {

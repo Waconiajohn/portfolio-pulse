@@ -33,6 +33,7 @@ import { DiagnosticCard } from './DiagnosticCard';
 import { PerformanceMetricsCard } from './PerformanceMetricsCard';
 import { OnboardingWizard } from './OnboardingWizard';
 import { DetailView } from './DetailView';
+import { PortfolioSnapshot } from './PortfolioSnapshot';
 
 import { EfficientFrontierChart } from './EfficientFrontierChart';
 import { StressTestChart } from './StressTestChart';
@@ -169,12 +170,10 @@ export function PortfolioDashboard() {
     [analysis, holdings]
   );
 
-  // Filter out summary card and sort by severity (RED first, then YELLOW, then GREEN)
+  // Sort cards by severity (RED first, then YELLOW, then GREEN)
   const sortedCards = useMemo(() => {
     const statusOrder = { RED: 0, YELLOW: 1, GREEN: 2 };
-    return cardContracts
-      .filter((c) => c.id !== 'summary')
-      .sort((a, b) => statusOrder[a.status] - statusOrder[b.status]);
+    return [...cardContracts].sort((a, b) => statusOrder[a.status] - statusOrder[b.status]);
   }, [cardContracts]);
 
   // Group cards for section headers
@@ -186,6 +185,20 @@ export function PortfolioDashboard() {
     () => sortedCards.filter((c) => c.status === 'GREEN'),
     [sortedCards]
   );
+
+  // Portfolio Snapshot computed values
+  const snapshotData = useMemo(() => {
+    const totalValue = holdings.reduce((sum, h) => sum + h.shares * h.currentPrice, 0);
+    
+    // Count unique accounts from holdings
+    const uniqueAccounts = new Set(holdings.map(h => h.accountType || 'Unknown'));
+    const accountCount = uniqueAccounts.size || (holdings.length > 0 ? 1 : 0);
+    
+    // Count cards with RED or YELLOW status
+    const issuesCount = cardContracts.filter(c => c.status === 'RED' || c.status === 'YELLOW').length;
+    
+    return { totalValue, accountCount, issuesCount };
+  }, [holdings, cardContracts]);
 
   const actionPlan = useMemo(() => buildActionPlan(cardContracts, 6), [cardContracts]);
 
@@ -496,6 +509,13 @@ export function PortfolioDashboard() {
                 />
               ) : (
                 <div className="space-y-4 sm:space-y-6">
+                  {/* Portfolio Snapshot Banner */}
+                  <PortfolioSnapshot
+                    totalValue={snapshotData.totalValue}
+                    accountCount={snapshotData.accountCount}
+                    issuesCount={snapshotData.issuesCount}
+                  />
+
                   <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 sm:gap-6">
                     <div className="lg:col-span-3 space-y-6">
                       {/* Needs Attention Section */}
@@ -651,6 +671,13 @@ export function PortfolioDashboard() {
                   />
                 ) : (
                   <div className="space-y-6">
+                    {/* Portfolio Snapshot Banner */}
+                    <PortfolioSnapshot
+                      totalValue={snapshotData.totalValue}
+                      accountCount={snapshotData.accountCount}
+                      issuesCount={snapshotData.issuesCount}
+                    />
+
                     {/* Linked Accounts above diagnostic cards on mobile */}
                     {isConsumer && <LinkedAccountsPanel onHoldingsSync={() => {}} compact sampleAccounts={sampleAccounts} />}
                     

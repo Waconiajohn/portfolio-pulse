@@ -8,15 +8,15 @@ import { formatPct, formatCurrency, sentenceCase } from "@/domain/content/copyHe
 
 // Fallback titles if not found in CARD_COPY
 const TITLE_MAP: Partial<Record<CardContract["id"], string>> = {
-  riskDiversification: "Diversification & Concentration",
-  downsideResilience: "Downside Resilience",
-  performanceOptimization: "Performance vs Market",
-  costAnalysis: "Fees & Expense Drag",
-  taxEfficiency: "Tax Efficiency",
-  riskAdjusted: "Risk-Adjusted Performance",
+  riskDiversification: "Portfolio Concentration",
+  downsideResilience: "Market Drop Protection",
+  performanceOptimization: "Return Efficiency",
+  costAnalysis: "Investment Fees",
+  taxEfficiency: "Tax Drag",
+  riskAdjusted: "Risk vs Reward Balance",
   planningGaps: "Planning Gaps",
-  lifetimeIncomeSecurity: "Lifetime Income Security",
-  performanceMetrics: "Performance Metrics",
+  lifetimeIncomeSecurity: "Retirement Income Confidence",
+  performanceMetrics: "Portfolio Performance",
   crossAccountConcentration: "Cross-Account Risk",
 };
 

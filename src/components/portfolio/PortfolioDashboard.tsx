@@ -649,7 +649,8 @@ export function PortfolioDashboard() {
       {isMobile && activeTab === 'dashboard' && !selectedCategory && actionPlan.length > 0 && (
         <Button
           onClick={scrollToActionPlan}
-          className="fixed bottom-20 right-4 z-40 rounded-full h-12 px-4 shadow-lg"
+          className="fixed right-4 z-40 rounded-full h-12 px-4 shadow-lg"
+          style={{ bottom: 'calc(5rem + env(safe-area-inset-bottom, 0px))' }}
           size="sm"
         >
           <ListTodo className="h-4 w-4 mr-2" />

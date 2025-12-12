@@ -1,4 +1,5 @@
 import { PortfolioAnalysis } from '@/types/portfolio';
+import { PerformanceMetrics } from '@/types/performance-metrics';
 import { ScoringConfig } from '@/lib/scoring-config';
 import { TrendingUp, TrendingDown, Minus } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -6,6 +7,7 @@ import { cn } from '@/lib/utils';
 interface MobileMetricsCarouselProps {
   analysis: PortfolioAnalysis;
   scoringConfig: ScoringConfig;
+  performanceMetrics?: PerformanceMetrics;
 }
 
 interface MetricItemProps {
@@ -43,8 +45,13 @@ function MetricItem({ label, value, subValue, trend }: MetricItemProps) {
   );
 }
 
-export function MobileMetricsCarousel({ analysis, scoringConfig }: MobileMetricsCarouselProps) {
+export function MobileMetricsCarousel({ analysis, scoringConfig, performanceMetrics }: MobileMetricsCarouselProps) {
   const feePercent = ((analysis.totalFees / (analysis.totalValue || 1)) * 100).toFixed(2);
+  
+  // Get metrics from performanceMetrics if available
+  const totalReturn = performanceMetrics?.totalReturn ?? 0;
+  const cagr = performanceMetrics?.cagr ?? 0;
+  const beta = performanceMetrics?.beta ?? 1;
   
   return (
     <div className="overflow-x-auto scrollbar-hide -mx-4 px-4 py-2">
@@ -54,6 +61,17 @@ export function MobileMetricsCarousel({ analysis, scoringConfig }: MobileMetrics
           value={`$${(analysis.totalValue / 1000).toFixed(0)}K`}
         />
         <MetricItem
+          label="Total Return"
+          value={`${(totalReturn * 100).toFixed(1)}%`}
+          trend={totalReturn >= 0.08 ? 'up' : totalReturn >= 0 ? 'neutral' : 'down'}
+        />
+        <MetricItem
+          label="CAGR"
+          value={`${(cagr * 100).toFixed(1)}%`}
+          subValue="Avg/Year"
+          trend={cagr >= 0.08 ? 'up' : cagr >= 0.05 ? 'neutral' : 'down'}
+        />
+        <MetricItem
           label="Expected Return"
           value={`${(analysis.expectedReturn * 100).toFixed(1)}%`}
           trend={analysis.expectedReturn > 0.06 ? 'up' : 'neutral'}
@@ -61,6 +79,12 @@ export function MobileMetricsCarousel({ analysis, scoringConfig }: MobileMetrics
         <MetricItem
           label="Volatility"
           value={`${(analysis.volatility * 100).toFixed(1)}%`}
+        />
+        <MetricItem
+          label="Beta"
+          value={beta.toFixed(2)}
+          subValue="vs Market"
+          trend={beta <= 1.0 ? 'up' : beta <= 1.2 ? 'neutral' : 'down'}
         />
         <MetricItem
           label="Sharpe Ratio"

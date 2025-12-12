@@ -47,7 +47,7 @@ import { SettingsPanel } from './SettingsPanel';
 import { buildCardContracts } from '@/domain/cards/buildCards';
 import { getCardById } from '@/domain/cards/getCardById';
 import { buildActionPlan } from '@/domain/summary/buildActionPlan';
-import SummaryCard from '@/components/portfolio/SummaryCard';
+import { ActionPlanPanel } from '@/components/portfolio/ActionPlanPanel';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Textarea } from '@/components/ui/textarea';
@@ -468,7 +468,6 @@ export function PortfolioDashboard() {
                 />
               ) : (
                 <div className="space-y-4 sm:space-y-6">
-                  <SummaryCard healthScore={analysis?.healthScore} actionPlan={actionPlan} />
                   <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 sm:gap-6">
                     <div className="lg:col-span-3">
                       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3 sm:gap-4">
@@ -490,6 +489,14 @@ export function PortfolioDashboard() {
                           riskTolerance={clientInfo.riskTolerance}
                         />
                       ))}
+                    </div>
+                    
+                    {/* Action Plan below cards */}
+                    <div className="mt-4">
+                      <ActionPlanPanel
+                        actionPlan={actionPlan}
+                        onSelectCategory={(key) => setSelectedCategory(key)}
+                      />
                     </div>
                   </div>
 
@@ -584,6 +591,12 @@ export function PortfolioDashboard() {
                       scoringConfig={scoringConfig}
                       riskTolerance={clientInfo.riskTolerance}
                       onViewDetails={(key) => setSelectedCategory(key)}
+                    />
+                    
+                    {/* Action Plan below cards on mobile */}
+                    <ActionPlanPanel
+                      actionPlan={actionPlan}
+                      onSelectCategory={(key) => setSelectedCategory(key)}
                     />
                     
                     {/* Inline sidebar content on mobile (excluding LinkedAccountsPanel) */}

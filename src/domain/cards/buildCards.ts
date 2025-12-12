@@ -163,7 +163,7 @@ function getAccountContextForDiagnostic(
       // Find account with highest concentration (top holding %)
       const sorted = [...accountMetrics].sort((a, b) => b.topHoldingPct - a.topHoldingPct);
       const worst = sorted[0];
-      if (worst && worst.topHoldingPct > 25) {
+      if (worst && worst.topHoldingPct > 10) {
         return worst.bucket;
       }
       break;

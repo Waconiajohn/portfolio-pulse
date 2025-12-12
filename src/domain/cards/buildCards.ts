@@ -1,6 +1,7 @@
 // src/domain/cards/buildCards.ts
 import type { PortfolioAnalysis, Recommendation } from "@/types/portfolio";
-import type { CardContract, CardSeverity, CardAction } from "./types";
+import type { CardContract, CardAction } from "./types";
+import { computeSeverity } from "./severityPolicy";
 
 const TITLE_MAP: Record<CardContract["id"], string> = {
   riskDiversification: "Diversification & Concentration",
@@ -27,11 +28,6 @@ const ICON_MAP: Partial<Record<CardContract["id"], string>> = {
   performanceMetrics: "BarChart",
 };
 
-function severityFrom(status: "GREEN" | "YELLOW" | "RED", score: number): CardSeverity {
-  // v1 heuristic: red + low score = extreme. adjust later.
-  if (status === "RED" && score <= 35) return "EXTREME";
-  return "NORMAL";
-}
 
 function defaultActionsFor(id: CardContract["id"]): CardAction[] {
   switch (id) {
@@ -98,7 +94,7 @@ export function buildCardContracts(analysis: PortfolioAnalysis): CardContract[] 
       keyFinding: r.keyFinding,
       headlineMetric: r.headlineMetric,
       details: r.details,
-      severity: severityFrom(r.status, r.score),
+      severity: computeSeverity({ id, status: r.status, score: r.score, details: r.details }),
       recommendations: recs,
       actions: defaultActionsFor(id),
     });

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { Holding, AccountType, AssetClass } from '@/types/portfolio';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -36,6 +36,73 @@ interface CSVMappingState {
   headers: string[];
   rows: string[][];
   mapping: Record<CSVFieldKey, number | null>;
+}
+
+type AccountSubtype = 'brokerage' | 'traditional-ira' | 'roth-ira';
+
+interface AccountGroup {
+  subtype: AccountSubtype;
+  label: string;
+  taxLabel: string;
+  holdings: Holding[];
+  totalValue: number;
+}
+
+function inferAccountSubtype(holding: Holding): AccountSubtype {
+  const name = (holding.name || '').toLowerCase();
+  
+  if (holding.accountType === 'Taxable') {
+    return 'brokerage';
+  }
+  
+  // Tax-Advantaged: check name for Roth vs Traditional
+  if (name.includes('roth')) {
+    return 'roth-ira';
+  }
+  if (name.includes('trad ira') || name.includes('traditional') || name.includes('[trad ira]')) {
+    return 'traditional-ira';
+  }
+  // Default Tax-Advantaged to Traditional IRA
+  return 'traditional-ira';
+}
+
+function groupHoldingsByAccountSubtype(holdings: Holding[]): AccountGroup[] {
+  const groups: Record<AccountSubtype, Holding[]> = {
+    'brokerage': [],
+    'traditional-ira': [],
+    'roth-ira': [],
+  };
+
+  holdings.forEach(h => {
+    const subtype = inferAccountSubtype(h);
+    groups[subtype].push(h);
+  });
+
+  const accountConfig: Record<AccountSubtype, { label: string; taxLabel: string }> = {
+    'brokerage': { label: 'Brokerage Account', taxLabel: 'Taxable' },
+    'traditional-ira': { label: 'Traditional IRA', taxLabel: 'Tax-Deferred' },
+    'roth-ira': { label: 'Roth IRA', taxLabel: 'Tax-Free' },
+  };
+
+  const order: AccountSubtype[] = ['brokerage', 'traditional-ira', 'roth-ira'];
+
+  return order
+    .filter(subtype => groups[subtype].length > 0)
+    .map(subtype => ({
+      subtype,
+      label: accountConfig[subtype].label,
+      taxLabel: accountConfig[subtype].taxLabel,
+      holdings: groups[subtype],
+      totalValue: groups[subtype].reduce((sum, h) => sum + h.shares * h.currentPrice, 0),
+    }));
+}
+
+function formatCurrency(value: number): string {
+  return new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency: 'USD',
+    maximumFractionDigits: 0,
+  }).format(value);
 }
 
 function createEmptyHolding(): Holding {
@@ -248,33 +315,145 @@ export function HoldingsTable({ holdings, onUpdate }: HoldingsTableProps) {
   };
 
   const totalValue = holdings.reduce((sum, h) => sum + h.shares * h.currentPrice, 0);
+  
+  const accountGroups = useMemo(() => groupHoldingsByAccountSubtype(holdings), [holdings]);
+
+  const renderHoldingRow = (holding: Holding) => {
+    const value = holding.shares * holding.currentPrice;
+    const gainLoss = value - (holding.shares * holding.costBasis);
+    
+    return (
+      <TableRow key={holding.id} className="group">
+        <TableCell>
+          <Input
+            value={holding.ticker}
+            onChange={(e) => updateHolding(holding.id, 'ticker', e.target.value.toUpperCase())}
+            placeholder="AAPL"
+            className="h-8 font-mono uppercase"
+          />
+        </TableCell>
+        <TableCell>
+          <Input
+            value={holding.name}
+            onChange={(e) => updateHolding(holding.id, 'name', e.target.value)}
+            placeholder="Apple Inc."
+            className="h-8"
+          />
+        </TableCell>
+        <TableCell>
+          <Input
+            type="number"
+            value={holding.shares || ''}
+            onChange={(e) => updateHolding(holding.id, 'shares', parseFloat(e.target.value) || 0)}
+            placeholder="0"
+            className={cn('h-8 font-mono text-right', errors[`${holding.id}-shares`] && 'border-destructive')}
+          />
+        </TableCell>
+        <TableCell>
+          <Input
+            type="number"
+            value={holding.currentPrice || ''}
+            onChange={(e) => updateHolding(holding.id, 'currentPrice', parseFloat(e.target.value) || 0)}
+            placeholder="0.00"
+            className={cn('h-8 font-mono text-right', errors[`${holding.id}-currentPrice`] && 'border-destructive')}
+          />
+        </TableCell>
+        <TableCell>
+          <Input
+            type="number"
+            value={holding.costBasis || ''}
+            onChange={(e) => updateHolding(holding.id, 'costBasis', parseFloat(e.target.value) || 0)}
+            placeholder="0.00"
+            className={cn('h-8 font-mono text-right', errors[`${holding.id}-costBasis`] && 'border-destructive')}
+          />
+        </TableCell>
+        <TableCell>
+          <Select
+            value={holding.accountType}
+            onValueChange={(v) => updateHolding(holding.id, 'accountType', v as AccountType)}
+          >
+            <SelectTrigger className="h-8">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {ACCOUNT_TYPES.map(type => (
+                <SelectItem key={type} value={type}>{type}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </TableCell>
+        <TableCell>
+          <Select
+            value={holding.assetClass}
+            onValueChange={(v) => updateHolding(holding.id, 'assetClass', v as AssetClass)}
+          >
+            <SelectTrigger className="h-8">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {ASSET_CLASSES.map(ac => (
+                <SelectItem key={ac} value={ac}>{ac}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </TableCell>
+        <TableCell className="text-right">
+          <div className="font-mono font-medium">
+            ${value.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+          </div>
+          <div className={cn(
+            'text-xs font-mono',
+            gainLoss >= 0 ? 'value-positive' : 'value-negative'
+          )}>
+            {gainLoss >= 0 ? '+' : ''}{((gainLoss / (holding.shares * holding.costBasis || 1)) * 100).toFixed(1)}%
+          </div>
+        </TableCell>
+        <TableCell>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8 opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive"
+            onClick={() => removeHolding(holding.id)}
+          >
+            <Trash2 size={14} />
+          </Button>
+        </TableCell>
+      </TableRow>
+    );
+  };
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
+      {/* Grand Total Summary */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 p-3 rounded-lg bg-muted/50 border">
+        <div>
+          <div className="text-sm text-muted-foreground">Grand Total</div>
+          <div className="text-xl font-bold font-mono">{formatCurrency(totalValue)}</div>
+        </div>
         <div className="text-sm text-muted-foreground">
-          {holdings.length} holdings · Total: <span className="font-mono font-medium text-foreground">${totalValue.toLocaleString(undefined, { maximumFractionDigits: 0 })}</span>
+          {holdings.length} holdings across {accountGroups.length} account{accountGroups.length !== 1 ? 's' : ''}
         </div>
-        <div className="flex gap-2">
-          <label className="cursor-pointer">
-            <input
-              type="file"
-              accept=".csv"
-              onChange={handleFileSelect}
-              className="hidden"
-            />
-            <Button variant="outline" size="sm" asChild>
-              <span>
-                <Upload size={14} className="mr-1.5" />
-                Import CSV
-              </span>
-            </Button>
-          </label>
-          <Button size="sm" onClick={addHolding}>
-            <Plus size={14} className="mr-1.5" />
-            Add Holding
+      </div>
+
+      <div className="flex items-center justify-end gap-2">
+        <label className="cursor-pointer">
+          <input
+            type="file"
+            accept=".csv"
+            onChange={handleFileSelect}
+            className="hidden"
+          />
+          <Button variant="outline" size="sm" asChild>
+            <span>
+              <Upload size={14} className="mr-1.5" />
+              Import CSV
+            </span>
           </Button>
-        </div>
+        </label>
+        <Button size="sm" onClick={addHolding}>
+          <Plus size={14} className="mr-1.5" />
+          Add Holding
+        </Button>
       </div>
 
       {/* CSV Mapping Dialog */}
@@ -379,136 +558,65 @@ export function HoldingsTable({ holdings, onUpdate }: HoldingsTableProps) {
         </DialogContent>
       </Dialog>
 
-      <div className="rounded-lg border border-border overflow-hidden">
-        <Table>
-          <TableHeader>
-            <TableRow className="bg-muted/50 hover:bg-muted/50">
-              <TableHead className="w-24">Ticker</TableHead>
-              <TableHead className="w-32">Name</TableHead>
-              <TableHead className="w-24 text-right">Shares</TableHead>
-              <TableHead className="w-28 text-right">Price</TableHead>
-              <TableHead className="w-28 text-right">Cost Basis</TableHead>
-              <TableHead className="w-32">Account</TableHead>
-              <TableHead className="w-32">Asset Class</TableHead>
-              <TableHead className="w-28 text-right">Value</TableHead>
-              <TableHead className="w-12"></TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {holdings.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={9} className="h-24 text-center text-muted-foreground">
-                  No holdings added. Click "Add Holding" or import a CSV file.
-                </TableCell>
-              </TableRow>
-            ) : (
-              holdings.map((holding) => {
-                const value = holding.shares * holding.currentPrice;
-                const gainLoss = value - (holding.shares * holding.costBasis);
-                
-                return (
-                  <TableRow key={holding.id} className="group">
-                    <TableCell>
-                      <Input
-                        value={holding.ticker}
-                        onChange={(e) => updateHolding(holding.id, 'ticker', e.target.value.toUpperCase())}
-                        placeholder="AAPL"
-                        className="h-8 font-mono uppercase"
-                      />
-                    </TableCell>
-                    <TableCell>
-                      <Input
-                        value={holding.name}
-                        onChange={(e) => updateHolding(holding.id, 'name', e.target.value)}
-                        placeholder="Apple Inc."
-                        className="h-8"
-                      />
-                    </TableCell>
-                    <TableCell>
-                      <Input
-                        type="number"
-                        value={holding.shares || ''}
-                        onChange={(e) => updateHolding(holding.id, 'shares', parseFloat(e.target.value) || 0)}
-                        placeholder="0"
-                        className={cn('h-8 font-mono text-right', errors[`${holding.id}-shares`] && 'border-destructive')}
-                      />
-                    </TableCell>
-                    <TableCell>
-                      <Input
-                        type="number"
-                        value={holding.currentPrice || ''}
-                        onChange={(e) => updateHolding(holding.id, 'currentPrice', parseFloat(e.target.value) || 0)}
-                        placeholder="0.00"
-                        className={cn('h-8 font-mono text-right', errors[`${holding.id}-currentPrice`] && 'border-destructive')}
-                      />
-                    </TableCell>
-                    <TableCell>
-                      <Input
-                        type="number"
-                        value={holding.costBasis || ''}
-                        onChange={(e) => updateHolding(holding.id, 'costBasis', parseFloat(e.target.value) || 0)}
-                        placeholder="0.00"
-                        className={cn('h-8 font-mono text-right', errors[`${holding.id}-costBasis`] && 'border-destructive')}
-                      />
-                    </TableCell>
-                    <TableCell>
-                      <Select
-                        value={holding.accountType}
-                        onValueChange={(v) => updateHolding(holding.id, 'accountType', v as AccountType)}
-                      >
-                        <SelectTrigger className="h-8">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {ACCOUNT_TYPES.map(type => (
-                            <SelectItem key={type} value={type}>{type}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </TableCell>
-                    <TableCell>
-                      <Select
-                        value={holding.assetClass}
-                        onValueChange={(v) => updateHolding(holding.id, 'assetClass', v as AssetClass)}
-                      >
-                        <SelectTrigger className="h-8">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {ASSET_CLASSES.map(ac => (
-                            <SelectItem key={ac} value={ac}>{ac}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <div className="font-mono font-medium">
-                        ${value.toLocaleString(undefined, { maximumFractionDigits: 0 })}
-                      </div>
-                      <div className={cn(
-                        'text-xs font-mono',
-                        gainLoss >= 0 ? 'value-positive' : 'value-negative'
-                      )}>
-                        {gainLoss >= 0 ? '+' : ''}{((gainLoss / (holding.shares * holding.costBasis || 1)) * 100).toFixed(1)}%
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8 opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive"
-                        onClick={() => removeHolding(holding.id)}
-                      >
-                        <Trash2 size={14} />
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                );
-              })
-            )}
-          </TableBody>
-        </Table>
-      </div>
+      {/* Holdings by Account Section */}
+      {holdings.length === 0 ? (
+        <div className="rounded-lg border border-border p-8 text-center text-muted-foreground">
+          No holdings added. Click "Add Holding" or import a CSV file.
+        </div>
+      ) : (
+        <div className="space-y-6">
+          {accountGroups.map((group, groupIndex) => {
+            const percentOfTotal = totalValue > 0 ? (group.totalValue / totalValue) * 100 : 0;
+            
+            return (
+              <div key={group.subtype} className="space-y-2">
+                {/* Account Section Header */}
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 p-3 rounded-lg bg-muted/30 border">
+                  <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+                    <h3 className="font-semibold text-foreground">{group.label}</h3>
+                    <Badge variant="secondary" className="w-fit text-xs">
+                      {group.taxLabel}
+                    </Badge>
+                  </div>
+                  <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-4 text-sm">
+                    <span className="font-mono font-medium">{formatCurrency(group.totalValue)}</span>
+                    <span className="text-muted-foreground">
+                      {percentOfTotal.toFixed(1)}% of total
+                    </span>
+                  </div>
+                </div>
+
+                {/* Account Holdings Table */}
+                <div className="rounded-lg border border-border overflow-hidden">
+                  <Table>
+                    <TableHeader>
+                      <TableRow className="bg-muted/50 hover:bg-muted/50">
+                        <TableHead className="w-24">Ticker</TableHead>
+                        <TableHead className="w-32">Name</TableHead>
+                        <TableHead className="w-24 text-right">Shares</TableHead>
+                        <TableHead className="w-28 text-right">Price</TableHead>
+                        <TableHead className="w-28 text-right">Cost Basis</TableHead>
+                        <TableHead className="w-32">Account</TableHead>
+                        <TableHead className="w-32">Asset Class</TableHead>
+                        <TableHead className="w-28 text-right">Value</TableHead>
+                        <TableHead className="w-12"></TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {group.holdings.map(renderHoldingRow)}
+                    </TableBody>
+                  </Table>
+                </div>
+
+                {/* Divider between sections (except last) */}
+                {groupIndex < accountGroups.length - 1 && (
+                  <div className="pt-2" />
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }

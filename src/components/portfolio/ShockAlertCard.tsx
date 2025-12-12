@@ -8,6 +8,7 @@ import type { ShockAlert } from "@/domain/shock/types";
 
 type Props = {
   alert: ShockAlert;
+  onExplain?: () => void;
 };
 
 function badgeVariant(sev: ShockAlert["severity"]) {
@@ -15,7 +16,7 @@ function badgeVariant(sev: ShockAlert["severity"]) {
   return "secondary";
 }
 
-export default function ShockAlertCard({ alert }: Props) {
+export default function ShockAlertCard({ alert, onExplain }: Props) {
   const navigate = useNavigate();
 
   return (
@@ -74,6 +75,14 @@ export default function ShockAlertCard({ alert }: Props) {
                   </Button>
                 ))}
               </div>
+            </div>
+          )}
+
+          {onExplain && (
+            <div className="pt-1">
+              <Button size="sm" onClick={onExplain}>
+                Explain why
+              </Button>
             </div>
           )}
         </CardContent>

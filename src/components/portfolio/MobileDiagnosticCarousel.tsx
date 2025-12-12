@@ -154,6 +154,8 @@ export function MobileDiagnosticCarousel({
   }, [WheelGesturesPlugin()]);
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [scrollSnaps, setScrollSnaps] = useState<number[]>([]);
+  const [showSwipeHint, setShowSwipeHint] = useState(true);
+  const [hasInteracted, setHasInteracted] = useState(false);
 
   const diagnosticEntries = Object.entries(DIAGNOSTIC_CATEGORIES) as Array<
     [keyof typeof DIAGNOSTIC_CATEGORIES, typeof DIAGNOSTIC_CATEGORIES[keyof typeof DIAGNOSTIC_CATEGORIES]]
@@ -162,7 +164,20 @@ export function MobileDiagnosticCarousel({
   const onSelect = useCallback(() => {
     if (!emblaApi) return;
     setSelectedIndex(emblaApi.selectedScrollSnap());
-  }, [emblaApi]);
+    // Hide swipe hint after user interacts
+    if (!hasInteracted) {
+      setHasInteracted(true);
+      setShowSwipeHint(false);
+    }
+  }, [emblaApi, hasInteracted]);
+
+  // Auto-hide swipe hint after 4 seconds even without interaction
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setShowSwipeHint(false);
+    }, 4000);
+    return () => clearTimeout(timer);
+  }, []);
 
   useEffect(() => {
     if (!emblaApi) return;
@@ -251,6 +266,20 @@ export function MobileDiagnosticCarousel({
             ))}
           </div>
         </div>
+
+        {/* Swipe hint overlay - fades out after interaction or timeout */}
+        {showSwipeHint && (
+          <div 
+            className="absolute inset-0 flex items-center justify-center pointer-events-none z-20 animate-fade-out"
+            style={{ animationDelay: '2.5s', animationDuration: '1.5s', animationFillMode: 'forwards' }}
+          >
+            <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-foreground/80 backdrop-blur-md text-background text-sm font-medium shadow-lg">
+              <ChevronLeft size={16} className="animate-[bounce-x_1s_ease-in-out_infinite]" />
+              <span>Swipe for more</span>
+              <ChevronRight size={16} className="animate-[bounce-x_1s_ease-in-out_infinite_reverse]" />
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Pagination Dots */}

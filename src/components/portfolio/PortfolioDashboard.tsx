@@ -415,6 +415,8 @@ export function PortfolioDashboard() {
                   inflationRate={assumptions.inflationRate}
                   checklist={checklist}
                   onChecklistUpdate={setChecklist}
+                  lifetimeIncomeInputs={lifetimeIncomeInputs}
+                  onLifetimeIncomeUpdate={setLifetimeIncomeInputs}
                 />
               ) : (
                 <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 sm:gap-6">
@@ -514,6 +516,8 @@ export function PortfolioDashboard() {
                     inflationRate={assumptions.inflationRate}
                     checklist={checklist}
                     onChecklistUpdate={setChecklist}
+                    lifetimeIncomeInputs={lifetimeIncomeInputs}
+                    onLifetimeIncomeUpdate={setLifetimeIncomeInputs}
                   />
                 ) : (
                   <div className="space-y-6">

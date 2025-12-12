@@ -162,7 +162,7 @@ export const SECTOR_MAPPING: Record<string, string> = {
   'VNQ': 'Real Estate',
 };
 
-// Consolidated Category labels (8 categories instead of 11)
+// Consolidated Category labels (9 categories)
 export const DIAGNOSTIC_CATEGORIES = {
   riskDiversification: { name: 'Risk & Diversification', icon: 'Shield' },
   downsideResilience: { name: 'Downside Risk & Resilience', icon: 'ShieldAlert' },
@@ -172,4 +172,5 @@ export const DIAGNOSTIC_CATEGORIES = {
   riskAdjusted: { name: 'Risk-Adjusted Performance', icon: 'BarChart3' },
   planningGaps: { name: 'Planning Gaps', icon: 'ClipboardCheck' },
   lifetimeIncomeSecurity: { name: 'Lifetime Income Security', icon: 'Wallet' },
+  performanceMetrics: { name: 'Performance Metrics', icon: 'Activity' },
 } as const;

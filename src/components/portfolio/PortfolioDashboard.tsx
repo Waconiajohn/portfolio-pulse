@@ -34,6 +34,8 @@ import { PerformanceMetricsCard } from './PerformanceMetricsCard';
 import { OnboardingWizard } from './OnboardingWizard';
 import { DetailView } from './DetailView';
 import { PortfolioSnapshot } from './PortfolioSnapshot';
+import { InsightsFeed } from '@/components/insights/InsightsFeed';
+import { TacticalEducationPanel } from './TacticalEducationPanel';
 
 import { EfficientFrontierChart } from './EfficientFrontierChart';
 import { StressTestChart } from './StressTestChart';
@@ -509,11 +511,17 @@ export function PortfolioDashboard() {
                 />
               ) : (
                 <div className="space-y-4 sm:space-y-6">
-                  {/* Portfolio Snapshot Banner */}
-                  <PortfolioSnapshot
+                   {/* Portfolio Snapshot Banner */}
+                   <PortfolioSnapshot
                     totalValue={snapshotData.totalValue}
                     accountCount={snapshotData.accountCount}
                     issuesCount={snapshotData.issuesCount}
+                  />
+                  
+                  {/* Insights Feed - proactive intelligence */}
+                  <InsightsFeed 
+                    cards={cardContracts} 
+                    onViewCard={(cardId) => setSelectedCategory(cardId)} 
                   />
 
                   <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 sm:gap-6">
@@ -582,11 +590,14 @@ export function PortfolioDashboard() {
                     </div>
                     
                     {/* Action Plan below cards */}
-                    <div className="mt-4">
+                    <div className="space-y-4">
                       <ActionPlanPanel
                         actionPlan={actionPlan}
                         onSelectCategory={(key) => setSelectedCategory(key)}
                       />
+                      
+                      {/* Tactical Education Panel - conditional */}
+                      <TacticalEducationPanel cards={cardContracts} />
                     </div>
                   </div>
 
@@ -670,12 +681,18 @@ export function PortfolioDashboard() {
                     card={selectedCard}
                   />
                 ) : (
-                  <div className="space-y-6">
+                  <div className="space-y-4">
                     {/* Portfolio Snapshot Banner */}
                     <PortfolioSnapshot
                       totalValue={snapshotData.totalValue}
                       accountCount={snapshotData.accountCount}
                       issuesCount={snapshotData.issuesCount}
+                    />
+                    
+                    {/* Insights Feed */}
+                    <InsightsFeed 
+                      cards={cardContracts} 
+                      onViewCard={(cardId) => setSelectedCategory(cardId)} 
                     />
 
                     {/* Linked Accounts above diagnostic cards on mobile */}
@@ -690,12 +707,15 @@ export function PortfolioDashboard() {
                     />
                     
                     {/* Action Plan below cards on mobile */}
-                    <div ref={actionPlanContainerRef}>
+                    <div ref={actionPlanContainerRef} className="space-y-4">
                       <ActionPlanPanel
                         ref={actionPlanRef}
                         actionPlan={actionPlan}
                         onSelectCategory={(key) => setSelectedCategory(key)}
                       />
+                      
+                      {/* Tactical Education Panel */}
+                      <TacticalEducationPanel cards={cardContracts} />
                     </div>
                     
                     {/* Inline sidebar content on mobile (excluding LinkedAccountsPanel) */}

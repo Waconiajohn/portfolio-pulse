@@ -20,6 +20,7 @@ import {
   SECTOR_MAPPING,
 } from './constants';
 import { ScoringConfig, DEFAULT_SCORING_CONFIG, AdviceModel } from './scoring-config';
+import { calculateAllPerformanceMetrics, getMetricStatus } from './performance-metrics';
 
 // ============================================================================
 // HELPER: Get status from score using config thresholds
@@ -1005,6 +1006,75 @@ function analyzeLifetimeIncomeSecurity(
 }
 
 // ============================================================================
+// 9. PERFORMANCE METRICS DIAGNOSTIC
+// ============================================================================
+import { PerformanceMetrics, METRIC_EDUCATION } from '@/types/performance-metrics';
+import { RiskTolerance } from '@/types/portfolio';
+
+function analyzePerformanceMetricsDiagnostic(
+  metrics: PerformanceMetrics,
+  riskTolerance: RiskTolerance,
+  config: ScoringConfig
+): DiagnosticResult {
+  // Get status for each metric
+  const metricStatuses = {
+    totalReturn: getMetricStatus('totalReturn', metrics.totalReturn, riskTolerance),
+    cagr: getMetricStatus('cagr', metrics.cagr, riskTolerance),
+    sharpeRatio: getMetricStatus('sharpeRatio', metrics.sharpeRatio, riskTolerance),
+    sortinoRatio: getMetricStatus('sortinoRatio', metrics.sortinoRatio, riskTolerance),
+    calmarRatio: getMetricStatus('calmarRatio', metrics.calmarRatio, riskTolerance),
+    standardDeviation: getMetricStatus('standardDeviation', metrics.standardDeviation, riskTolerance),
+    beta: getMetricStatus('beta', metrics.beta, riskTolerance),
+    maxDrawdown: getMetricStatus('maxDrawdown', metrics.maxDrawdown, riskTolerance),
+    expenseRatio: getMetricStatus('expenseRatio', metrics.expenseRatio, riskTolerance),
+  };
+
+  // Count status types
+  const goodCount = Object.values(metricStatuses).filter(s => s.status === 'good').length;
+  const warningCount = Object.values(metricStatuses).filter(s => s.status === 'warning').length;
+  const poorCount = Object.values(metricStatuses).filter(s => s.status === 'poor').length;
+  const totalMetrics = Object.keys(metricStatuses).length;
+
+  // Calculate score
+  let score = (goodCount * 100 + warningCount * 50 + poorCount * 20) / totalMetrics;
+  score = Math.max(0, Math.min(100, Math.round(score)));
+
+  const status = getStatus(score, config);
+
+  // Build key finding
+  let keyFinding: string;
+  const poorMetrics = Object.entries(metricStatuses)
+    .filter(([_, s]) => s.status === 'poor')
+    .map(([key]) => key);
+  
+  if (poorCount === 0 && warningCount <= 2) {
+    keyFinding = `Strong performance across ${goodCount}/${totalMetrics} metrics. Portfolio is well-positioned for your ${riskTolerance} risk profile.`;
+  } else if (poorCount > 0) {
+    const worstMetric = poorMetrics[0];
+    const education = METRIC_EDUCATION[worstMetric as keyof PerformanceMetrics];
+    keyFinding = `${poorCount} metric(s) need attention. ${education?.brief || ''} Consider reviewing ${poorMetrics.join(', ')}.`;
+  } else {
+    keyFinding = `${goodCount} metrics performing well, ${warningCount} at fair levels. Room for optimization in efficiency ratios.`;
+  }
+
+  return {
+    status,
+    score,
+    keyFinding,
+    headlineMetric: `${goodCount} Good | ${warningCount} Fair | ${poorCount} Poor`,
+    details: {
+      metrics,
+      metricStatuses,
+      goodCount,
+      warningCount,
+      poorCount,
+      totalMetrics,
+      riskTolerance,
+    },
+  };
+}
+
+// ============================================================================
 // GENERATE RECOMMENDATIONS
 // ============================================================================
 function generateRecommendations(analysis: Omit<PortfolioAnalysis, 'recommendations'>): Recommendation[] {
@@ -1135,6 +1205,7 @@ export function analyzePortfolio(
         riskAdjusted: emptyResult,
         planningGaps: analyzePlanningGaps(planningChecklist, config),
         lifetimeIncomeSecurity: analyzeLifetimeIncomeSecurity(lifetimeIncomeInputs, config),
+        performanceMetrics: emptyResult,
       },
       recommendations: [],
     };
@@ -1152,6 +1223,10 @@ export function analyzePortfolio(
         }
       : undefined;
 
+  // Calculate performance metrics for the new diagnostic card
+  const perfMetrics = calculateAllPerformanceMetrics(holdings);
+  const performanceMetricsDiagnostic = analyzePerformanceMetricsDiagnostic(perfMetrics, clientInfo.riskTolerance, config);
+
   const diagnostics = {
     riskDiversification: analyzeRiskAndDiversification(holdings, clientInfo, metrics.totalValue, metrics.volatility, config),
     downsideResilience: analyzeDownsideResilience(holdings, metrics.totalValue, config),
@@ -1161,18 +1236,20 @@ export function analyzePortfolio(
     riskAdjusted: analyzeRiskAdjusted(holdings, clientInfo, metrics.totalValue, metrics.expectedReturn, metrics.volatility, config, lifetimeIncomeAnalysisData),
     planningGaps: analyzePlanningGaps(planningChecklist, config),
     lifetimeIncomeSecurity: lifetimeIncomeResult,
+    performanceMetrics: performanceMetricsDiagnostic,
   };
 
   // Calculate overall health score (weighted average of diagnostics)
   const weights = {
-    riskDiversification: 0.18,
-    downsideResilience: 0.15,
-    performanceOptimization: 0.15,
-    costAnalysis: 0.12,
+    riskDiversification: 0.16,
+    downsideResilience: 0.14,
+    performanceOptimization: 0.12,
+    costAnalysis: 0.11,
     taxEfficiency: 0.08,
-    riskAdjusted: 0.12,
-    planningGaps: 0.10,
-    lifetimeIncomeSecurity: 0.10,
+    riskAdjusted: 0.11,
+    planningGaps: 0.09,
+    lifetimeIncomeSecurity: 0.09,
+    performanceMetrics: 0.10,
   };
 
   const healthScore = Object.entries(diagnostics).reduce((sum, [key, result]) => {

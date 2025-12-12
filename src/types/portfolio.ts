@@ -35,7 +35,7 @@ export interface DiagnosticResult {
   details: Record<string, unknown>;
 }
 
-// Consolidated diagnostics interface (8 categories instead of 11)
+// Consolidated diagnostics interface (9 categories)
 export interface PortfolioAnalysis {
   healthScore: number;
   totalValue: number;
@@ -53,6 +53,7 @@ export interface PortfolioAnalysis {
     riskAdjusted: DiagnosticResult;
     planningGaps: DiagnosticResult;
     lifetimeIncomeSecurity: DiagnosticResult;
+    performanceMetrics: DiagnosticResult;
   };
   recommendations: Recommendation[];
 }

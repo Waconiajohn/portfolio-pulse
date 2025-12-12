@@ -1,9 +1,14 @@
 import { useState } from 'react';
-import { DiagnosticResult, RiskTolerance, PlanningChecklist, GuaranteedIncomeSource } from '@/types/portfolio';
+import { DiagnosticResult, RiskTolerance, PlanningChecklist, GuaranteedIncomeSource, LifetimeIncomeInputs, GuaranteedIncomeSourceType } from '@/types/portfolio';
+import { PerformanceMetrics, MetricStatus, METRIC_EDUCATION } from '@/types/performance-metrics';
 import { StatusBadge } from './StatusBadge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { X, Check, AlertCircle, Info, TrendingUp } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { X, Check, AlertCircle, Info, TrendingUp, TrendingDown, Minus, ChevronDown, Plus, Trash2, DollarSign, Activity } from 'lucide-react';
 import { Checkbox } from '@/components/ui/checkbox';
 import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, AreaChart, Area, ReferenceLine, Legend } from 'recharts';
 import { ScoringConfig, DEFAULT_SCORING_CONFIG, getEducationContent } from '@/lib/scoring-config';
@@ -22,6 +27,8 @@ interface DetailViewProps {
   inflationRate?: number;
   checklist?: PlanningChecklist;
   onChecklistUpdate?: (checklist: PlanningChecklist) => void;
+  lifetimeIncomeInputs?: LifetimeIncomeInputs;
+  onLifetimeIncomeUpdate?: (inputs: LifetimeIncomeInputs) => void;
 }
 
 const CHART_COLORS = [
@@ -43,12 +50,16 @@ export function DetailView({
   clientAge = 62,
   inflationRate = 0.025,
   checklist,
-  onChecklistUpdate
+  onChecklistUpdate,
+  lifetimeIncomeInputs,
+  onLifetimeIncomeUpdate
 }: DetailViewProps) {
   const { details } = result;
   const educationContent = getEducationContent(scoringConfig, riskTolerance);
   const education = educationContent[categoryKey];
   const [viewMode, setViewMode] = useState<'nominal' | 'real'>('nominal');
+  const [expensesOpen, setExpensesOpen] = useState(false);
+  const [incomeOpen, setIncomeOpen] = useState(false);
 
   const renderSectorChart = () => {
     if (!details.sectorWeights) return null;
@@ -1006,6 +1017,355 @@ export function DetailView({
     );
   };
 
+  // Render Performance Metrics detail view
+  const renderPerformanceMetricsDetail = () => {
+    if (categoryKey !== 'performanceMetrics') return null;
+    
+    const metrics = details.metrics as PerformanceMetrics;
+    const metricStatuses = details.metricStatuses as Record<string, MetricStatus>;
+    
+    if (!metrics || !metricStatuses) return null;
+
+    const StatusIcon = ({ status }: { status: 'good' | 'warning' | 'poor' }) => {
+      if (status === 'good') return <TrendingUp size={14} className="text-status-good" />;
+      if (status === 'poor') return <TrendingDown size={14} className="text-status-critical" />;
+      return <Minus size={14} className="text-status-warning" />;
+    };
+
+    const METRIC_DISPLAY_ORDER: (keyof PerformanceMetrics)[] = [
+      'totalReturn',
+      'cagr',
+      'sharpeRatio',
+      'sortinoRatio',
+      'calmarRatio',
+      'standardDeviation',
+      'beta',
+      'maxDrawdown',
+      'expenseRatio',
+    ];
+
+    const METRIC_LABELS: Record<string, string> = {
+      totalReturn: 'Total Return',
+      cagr: 'Avg Return (CAGR)',
+      sharpeRatio: 'Sharpe Ratio',
+      sortinoRatio: 'Sortino Ratio',
+      calmarRatio: 'Calmar Ratio',
+      standardDeviation: 'Volatility (Std Dev)',
+      beta: 'Beta',
+      maxDrawdown: 'Max Drawdown',
+      expenseRatio: 'Expense Ratio',
+    };
+
+    return (
+      <div className="space-y-4 col-span-2">
+        <h4 className="text-sm font-medium flex items-center gap-2">
+          <Activity size={16} className="text-primary" />
+          All Performance Metrics
+        </h4>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+          {METRIC_DISPLAY_ORDER.map((key) => {
+            const metricStatus = metricStatuses[key];
+            if (!metricStatus) return null;
+            
+            const education = METRIC_EDUCATION[key];
+
+            return (
+              <div 
+                key={key}
+                className={cn(
+                  'p-3 rounded-lg border transition-colors',
+                  metricStatus.status === 'good' && 'bg-status-good/5 border-status-good/20',
+                  metricStatus.status === 'warning' && 'bg-status-warning/5 border-status-warning/20',
+                  metricStatus.status === 'poor' && 'bg-status-critical/5 border-status-critical/20'
+                )}
+              >
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-xs font-medium text-muted-foreground">
+                    {METRIC_LABELS[key] || key}
+                  </span>
+                  <div className="flex items-center gap-1.5">
+                    <StatusIcon status={metricStatus.status} />
+                    <span className={cn(
+                      'text-xs font-medium',
+                      metricStatus.status === 'good' && 'text-status-good',
+                      metricStatus.status === 'warning' && 'text-status-warning',
+                      metricStatus.status === 'poor' && 'text-status-critical'
+                    )}>
+                      {metricStatus.label}
+                    </span>
+                  </div>
+                </div>
+                <div className="font-mono text-lg font-semibold">
+                  {metricStatus.formattedValue}
+                </div>
+                {education && (
+                  <p className="text-xs text-muted-foreground mt-1.5 line-clamp-2">
+                    {education.brief}
+                  </p>
+                )}
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Summary */}
+        <div className="p-3 rounded-lg bg-primary/5 border border-primary/20">
+          <div className="flex items-start gap-2">
+            <Info size={16} className="text-primary mt-0.5 shrink-0" />
+            <div className="text-sm text-muted-foreground">
+              Performance metrics provide a comprehensive view of your portfolio's risk-adjusted returns. 
+              Focus on maintaining a balance between growth (Return, CAGR) and risk management (Sharpe, Max Drawdown).
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  // Render Lifetime Income Inputs Editor (for lifetimeIncomeSecurity category)
+  const renderLifetimeIncomeInputsEditor = () => {
+    if (categoryKey !== 'lifetimeIncomeSecurity' || !lifetimeIncomeInputs || !onLifetimeIncomeUpdate) return null;
+
+    const SOURCE_TYPE_LABELS: Record<GuaranteedIncomeSourceType, string> = {
+      'social-security-client': 'Social Security – Client',
+      'social-security-spouse': 'Social Security – Spouse',
+      'pension-client': 'Pension – Client',
+      'pension-spouse': 'Pension – Spouse',
+      'guaranteed-annuity': 'Guaranteed Annuity',
+      'other-guaranteed': 'Other Guaranteed',
+    };
+
+    const SOURCE_TYPES: GuaranteedIncomeSourceType[] = [
+      'social-security-client',
+      'social-security-spouse',
+      'pension-client',
+      'pension-spouse',
+      'guaranteed-annuity',
+      'other-guaranteed',
+    ];
+
+    const totalExpenses = lifetimeIncomeInputs.coreLivingExpensesMonthly + 
+      lifetimeIncomeInputs.discretionaryExpensesMonthly + 
+      lifetimeIncomeInputs.healthcareLongTermCareMonthly;
+    
+    const totalGuaranteedIncome = lifetimeIncomeInputs.guaranteedSources
+      .filter(s => s.guaranteedForLife)
+      .reduce((sum, s) => sum + s.monthlyAmount, 0);
+
+    const addSource = () => {
+      const newSource: GuaranteedIncomeSource = {
+        id: crypto.randomUUID(),
+        sourceName: '',
+        sourceType: 'social-security-client',
+        monthlyAmount: 0,
+        startAge: 65,
+        inflationAdj: true,
+        guaranteedForLife: true,
+      };
+      onLifetimeIncomeUpdate({
+        ...lifetimeIncomeInputs,
+        guaranteedSources: [...lifetimeIncomeInputs.guaranteedSources, newSource],
+      });
+      setIncomeOpen(true);
+    };
+
+    const updateSource = (id: string, field: keyof GuaranteedIncomeSource, value: unknown) => {
+      onLifetimeIncomeUpdate({
+        ...lifetimeIncomeInputs,
+        guaranteedSources: lifetimeIncomeInputs.guaranteedSources.map(s => 
+          s.id === id ? { ...s, [field]: value } : s
+        ),
+      });
+    };
+
+    const removeSource = (id: string) => {
+      onLifetimeIncomeUpdate({
+        ...lifetimeIncomeInputs,
+        guaranteedSources: lifetimeIncomeInputs.guaranteedSources.filter(s => s.id !== id),
+      });
+    };
+
+    return (
+      <div className="space-y-3 col-span-2 p-4 rounded-lg bg-muted/20 border border-border">
+        <h4 className="text-sm font-medium flex items-center gap-2">
+          <DollarSign size={16} className="text-primary" />
+          Edit Income & Expenses
+        </h4>
+
+        {/* Summary Row */}
+        <div className="grid grid-cols-2 gap-2">
+          <div className="p-2.5 rounded-lg bg-muted/50 border border-border">
+            <div className="text-[10px] uppercase tracking-wider text-muted-foreground">Total Expenses</div>
+            <div className="font-mono text-base font-semibold">${totalExpenses.toLocaleString()}/mo</div>
+          </div>
+          <div className="p-2.5 rounded-lg bg-primary/10 border border-primary/20">
+            <div className="text-[10px] uppercase tracking-wider text-muted-foreground">Guaranteed Income</div>
+            <div className="font-mono text-base font-semibold text-primary">${totalGuaranteedIncome.toLocaleString()}/mo</div>
+          </div>
+        </div>
+
+        {/* Collapsible Expenses Section */}
+        <Collapsible open={expensesOpen} onOpenChange={setExpensesOpen}>
+          <CollapsibleTrigger asChild>
+            <button className="flex items-center justify-between w-full p-2.5 rounded-lg bg-muted/30 hover:bg-muted/50 transition-colors">
+              <div className="flex items-center gap-2">
+                <DollarSign size={14} className="text-muted-foreground" />
+                <span className="text-xs font-medium">Monthly Expenses</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-mono text-muted-foreground">
+                  ${totalExpenses.toLocaleString()}/mo
+                </span>
+                <ChevronDown size={14} className={cn(
+                  "text-muted-foreground transition-transform duration-200",
+                  expensesOpen && "rotate-180"
+                )} />
+              </div>
+            </button>
+          </CollapsibleTrigger>
+          <CollapsibleContent className="pt-2 space-y-2">
+            <div className="space-y-2 p-2.5 rounded-lg bg-muted/20 border border-border">
+              <div className="space-y-1">
+                <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">Core Living</Label>
+                <Input
+                  type="number"
+                  value={lifetimeIncomeInputs.coreLivingExpensesMonthly || ''}
+                  onChange={(e) => onLifetimeIncomeUpdate({ ...lifetimeIncomeInputs, coreLivingExpensesMonthly: parseFloat(e.target.value) || 0 })}
+                  placeholder="Housing, food..."
+                  className="h-9 font-mono text-sm"
+                />
+              </div>
+              <div className="space-y-1">
+                <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">Discretionary</Label>
+                <Input
+                  type="number"
+                  value={lifetimeIncomeInputs.discretionaryExpensesMonthly || ''}
+                  onChange={(e) => onLifetimeIncomeUpdate({ ...lifetimeIncomeInputs, discretionaryExpensesMonthly: parseFloat(e.target.value) || 0 })}
+                  placeholder="Travel, dining..."
+                  className="h-9 font-mono text-sm"
+                />
+              </div>
+              <div className="space-y-1">
+                <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">Healthcare</Label>
+                <Input
+                  type="number"
+                  value={lifetimeIncomeInputs.healthcareLongTermCareMonthly || ''}
+                  onChange={(e) => onLifetimeIncomeUpdate({ ...lifetimeIncomeInputs, healthcareLongTermCareMonthly: parseFloat(e.target.value) || 0 })}
+                  placeholder="Medical, LTC..."
+                  className="h-9 font-mono text-sm"
+                />
+              </div>
+            </div>
+          </CollapsibleContent>
+        </Collapsible>
+
+        {/* Collapsible Income Sources Section */}
+        <Collapsible open={incomeOpen} onOpenChange={setIncomeOpen}>
+          <CollapsibleTrigger asChild>
+            <button className="flex items-center justify-between w-full p-2.5 rounded-lg bg-muted/30 hover:bg-muted/50 transition-colors">
+              <div className="flex items-center gap-2">
+                <TrendingUp size={14} className="text-muted-foreground" />
+                <span className="text-xs font-medium">Income Sources</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-muted-foreground">
+                  {lifetimeIncomeInputs.guaranteedSources.length} sources
+                </span>
+                <ChevronDown size={14} className={cn(
+                  "text-muted-foreground transition-transform duration-200",
+                  incomeOpen && "rotate-180"
+                )} />
+              </div>
+            </button>
+          </CollapsibleTrigger>
+          <CollapsibleContent className="pt-2 space-y-2">
+            {lifetimeIncomeInputs.guaranteedSources.length === 0 ? (
+              <div className="p-3 text-center text-xs text-muted-foreground border border-dashed rounded-lg">
+                No income sources yet
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {lifetimeIncomeInputs.guaranteedSources.map((source) => (
+                  <div key={source.id} className="p-2.5 rounded-lg bg-muted/20 border border-border space-y-2">
+                    <div className="grid grid-cols-2 gap-2">
+                      <div className="space-y-1">
+                        <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">Type</Label>
+                        <Select
+                          value={source.sourceType}
+                          onValueChange={(v) => updateSource(source.id, 'sourceType', v)}
+                        >
+                          <SelectTrigger className="h-8 text-xs">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {SOURCE_TYPES.map(type => (
+                              <SelectItem key={type} value={type} className="text-xs">
+                                {SOURCE_TYPE_LABELS[type]}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">Amount</Label>
+                        <Input
+                          type="number"
+                          value={source.monthlyAmount || ''}
+                          onChange={(e) => updateSource(source.id, 'monthlyAmount', parseFloat(e.target.value) || 0)}
+                          placeholder="$0"
+                          className="h-8 font-mono text-xs"
+                        />
+                      </div>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className="flex items-center gap-1.5">
+                          <Checkbox
+                            id={`inflation-${source.id}`}
+                            checked={source.inflationAdj}
+                            onCheckedChange={(checked) => updateSource(source.id, 'inflationAdj', checked)}
+                            className="h-3.5 w-3.5"
+                          />
+                          <Label htmlFor={`inflation-${source.id}`} className="text-[10px] cursor-pointer">
+                            COLA
+                          </Label>
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                          <Checkbox
+                            id={`lifetime-${source.id}`}
+                            checked={source.guaranteedForLife}
+                            onCheckedChange={(checked) => updateSource(source.id, 'guaranteedForLife', checked)}
+                            className="h-3.5 w-3.5"
+                          />
+                          <Label htmlFor={`lifetime-${source.id}`} className="text-[10px] cursor-pointer">
+                            Lifetime
+                          </Label>
+                        </div>
+                      </div>
+                      <Button 
+                        variant="ghost" 
+                        size="icon" 
+                        onClick={() => removeSource(source.id)}
+                        className="h-6 w-6 text-destructive hover:text-destructive"
+                      >
+                        <Trash2 size={12} />
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+            <Button variant="outline" size="sm" onClick={addSource} className="w-full gap-1.5 h-8 text-xs">
+              <Plus size={12} />
+              Add Income Source
+            </Button>
+          </CollapsibleContent>
+        </Collapsible>
+      </div>
+    );
+  };
+
   return (
     <Card className="animate-slide-up">
       <CardHeader className="flex flex-row items-center justify-between">
@@ -1047,6 +1407,8 @@ export function DetailView({
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {renderIncomeSecurityCallout()}
+          {renderLifetimeIncomeInputsEditor()}
+          {renderPerformanceMetricsDetail()}
           {renderSectorChart()}
           {renderTopPositions()}
           {renderFeeBreakdown()}

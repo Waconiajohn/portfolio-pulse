@@ -61,6 +61,7 @@ export function detectShockAlert(cards: CardContract[]): ShockAlert | null {
   const sortedDrivers = driversSource
     .slice()
     .sort((a, b) => (a.score ?? 100) - (b.score ?? 100));
+  const primaryCategoryKey = sortedDrivers[0] ? String(sortedDrivers[0].id) : undefined;
   const drivers = sortedDrivers
     .slice(0, 3)
     .map(toDriverLine)
@@ -76,5 +77,5 @@ export function detectShockAlert(cards: CardContract[]): ShockAlert | null {
       ? "Your portfolio shows extreme fragility signals. In a sudden market move, these can force painful decisions. Address the top drivers below first."
       : "Your portfolio shows elevated risk signals. Consider small, high-impact adjustments to reduce downside exposure.";
 
-  return { severity, title, message, drivers, actions };
+  return { severity, title, message, primaryCategoryKey, drivers, actions };
 }

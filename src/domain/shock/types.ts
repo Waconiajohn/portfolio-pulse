@@ -7,6 +7,7 @@ export type ShockAlert = {
   severity: ShockSeverity;
   title: string;
   message: string;
+  primaryCategoryKey?: string;
   drivers: string[];     // short bullet list of "why"
   actions: CardAction[]; // suggested actions (buttons)
 };

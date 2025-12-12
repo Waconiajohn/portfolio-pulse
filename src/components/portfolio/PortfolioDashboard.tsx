@@ -446,7 +446,7 @@ export function PortfolioDashboard() {
                         <DiagnosticCard
                           key={String(c.id)}
                           name={String(c.title)}
-                          iconName={"Shield"}
+                          iconName={c.iconName ?? "Shield"}
                           categoryKey={String(c.id)}
                           result={{
                             status: c.status,

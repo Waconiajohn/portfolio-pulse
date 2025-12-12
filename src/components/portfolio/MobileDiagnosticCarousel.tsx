@@ -143,10 +143,11 @@ export function MobileDiagnosticCarousel({
   onViewDetails
 }: MobileDiagnosticCarouselProps) {
   const [emblaRef, emblaApi] = useEmblaCarousel({ 
-    align: 'center',
-    containScroll: 'trimSnaps',
+    align: 'start',
+    containScroll: false,
     loop: false,
     skipSnaps: false,
+    dragFree: false,
   });
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [scrollSnaps, setScrollSnaps] = useState<number[]>([]);
@@ -177,12 +178,13 @@ export function MobileDiagnosticCarousel({
   return (
     <div className="space-y-4">
       {/* Carousel */}
-      <div className="overflow-hidden -mx-3" ref={emblaRef}>
-        <div className="flex touch-pan-y">
+      <div className="overflow-hidden -mx-4 px-4" ref={emblaRef}>
+        <div className="flex touch-pan-y -ml-3">
           {diagnosticEntries.map(([key, config], index) => (
             <div 
               key={key} 
-              className="flex-[0_0_85%] min-w-0 pl-3 first:pl-3 last:pr-3"
+              className="flex-[0_0_80%] min-w-0 pl-3"
+              style={{ paddingRight: index === diagnosticEntries.length - 1 ? '1rem' : 0 }}
             >
               <CarouselCard
                 name={config.name}

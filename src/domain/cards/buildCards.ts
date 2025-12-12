@@ -3,7 +3,9 @@ import type { PortfolioAnalysis, Recommendation, Holding } from "@/types/portfol
 import type { CardContract, CardAction } from "./types";
 import { computeSeverity } from "./severityPolicy";
 import { inferAccountSubtype, type AccountBucket } from "@/domain/accounts/inferAccountSubtype";
+import { CARD_COPY } from "@/domain/content/cardCopy";
 
+// Fallback titles if not found in CARD_COPY
 const TITLE_MAP: Record<CardContract["id"], string> = {
   riskDiversification: "Diversification & Concentration",
   downsideResilience: "Downside Resilience",
@@ -184,9 +186,12 @@ export function buildCardContracts(analysis: PortfolioAnalysis, holdings: Holdin
     // Compute account-aware context
     const contextLabel = getAccountContextForDiagnostic(id, holdings, r.status);
 
+    const copy = CARD_COPY[id];
+    
     cards.push({
       id,
-      title: TITLE_MAP[id] ?? String(id),
+      title: copy?.title ?? TITLE_MAP[id] ?? String(id),
+      subtitle: copy?.subtitle,
       iconName: ICON_MAP[id],
       whyItMatters: WHY[id] ?? "This diagnostic highlights a portfolio health dimension.",
       status: r.status,

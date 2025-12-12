@@ -178,8 +178,8 @@ export function MobileDiagnosticCarousel({
   return (
     <div className="space-y-4">
       {/* Carousel */}
-      <div className="overflow-hidden -mx-4 px-4" ref={emblaRef}>
-        <div className="flex touch-pan-y -ml-3">
+      <div className="overflow-hidden -mx-4 px-4 cursor-grab active:cursor-grabbing" ref={emblaRef}>
+        <div className="flex -ml-3">
           {diagnosticEntries.map(([key, config], index) => (
             <div 
               key={key} 

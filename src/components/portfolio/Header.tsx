@@ -89,7 +89,7 @@ export function Header({
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-3 sm:mb-4">
           <div className="flex items-center gap-3">
             <div>
-              <h1 className="text-lg sm:text-xl font-semibold tracking-tight">Portfolio Diagnostic</h1>
+              <h1 className="text-lg sm:text-xl font-semibold tracking-tight">PortfolioGuard</h1>
               <p className="text-xs text-muted-foreground">
                 {isAdvisor ? 'Professional Advisory Analysis' : 'Personal Portfolio Analysis'}
               </p>

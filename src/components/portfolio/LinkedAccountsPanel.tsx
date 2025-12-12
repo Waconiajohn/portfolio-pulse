@@ -19,19 +19,29 @@ import {
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
 
+export interface SampleAccount {
+  id: string;
+  institution_name: string;
+  account_name: string;
+  account_type: 'Taxable' | 'Tax-Advantaged';
+  account_mask: string;
+  total_value: number;
+}
+
 interface LinkedAccountsPanelProps {
   onRefresh?: () => void;
   onHoldingsSync?: () => void;
   compact?: boolean;
+  sampleAccounts?: SampleAccount[];
 }
 
-export function LinkedAccountsPanel({ onRefresh, onHoldingsSync, compact = false }: LinkedAccountsPanelProps) {
+export function LinkedAccountsPanel({ onRefresh, onHoldingsSync, compact = false, sampleAccounts }: LinkedAccountsPanelProps) {
   const { mode } = useAppMode();
   const { user } = useAuth();
   const navigate = useNavigate();
   const {
     status,
-    linkedAccounts,
+    linkedAccounts: plaidAccounts,
     accountsLoading,
     initializePlaidLink,
     fetchLinkedAccounts,
@@ -40,15 +50,33 @@ export function LinkedAccountsPanel({ onRefresh, onHoldingsSync, compact = false
     unlinkAccount,
   } = usePlaid();
 
+  // Use sample accounts if provided, otherwise use Plaid accounts
+  const usingSampleData = sampleAccounts && sampleAccounts.length > 0;
+  const displayAccounts = usingSampleData
+    ? sampleAccounts.map(sa => ({
+        id: sa.id,
+        user_id: '',
+        plaid_item_id: null,
+        institution_name: sa.institution_name,
+        account_name: sa.account_name,
+        account_type: sa.account_type,
+        account_mask: sa.account_mask,
+        last_sync_at: new Date().toISOString(),
+        sync_status: 'synced' as const,
+        created_at: new Date().toISOString(),
+        total_value: sa.total_value,
+      }))
+    : plaidAccounts;
+
   const [syncing, setSyncing] = useState(false);
   const [unlinkingId, setUnlinkingId] = useState<string | null>(null);
 
   // Fetch linked accounts when component mounts
   useEffect(() => {
-    if (user) {
+    if (user && !usingSampleData) {
       fetchLinkedAccounts();
     }
-  }, [user, fetchLinkedAccounts]);
+  }, [user, fetchLinkedAccounts, usingSampleData]);
 
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('en-US', {
@@ -208,14 +236,14 @@ export function LinkedAccountsPanel({ onRefresh, onHoldingsSync, compact = false
             <div className="flex items-center gap-2">
               <Building2 className="h-4 w-4 text-primary" />
               <span className="text-sm font-medium">Accounts</span>
-              {linkedAccounts.length > 0 && (
+              {displayAccounts.length > 0 && (
                 <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
-                  {linkedAccounts.length}
+                  {displayAccounts.length}
                 </Badge>
               )}
             </div>
             <div className="flex gap-1.5">
-              {linkedAccounts.length > 0 && (
+              {displayAccounts.length > 0 && !usingSampleData && (
                 <Button
                   variant="ghost"
                   size="sm"
@@ -252,7 +280,7 @@ export function LinkedAccountsPanel({ onRefresh, onHoldingsSync, compact = false
             <div className="flex items-center justify-center py-4">
               <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
             </div>
-          ) : linkedAccounts.length === 0 ? (
+          ) : displayAccounts.length === 0 ? (
             <div className="flex items-center gap-3 py-2 text-muted-foreground">
               <Building2 className="h-8 w-8 opacity-50" />
               <div>
@@ -262,7 +290,7 @@ export function LinkedAccountsPanel({ onRefresh, onHoldingsSync, compact = false
             </div>
           ) : (
             <div className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1 scrollbar-hide">
-              {linkedAccounts.map((account) => (
+              {displayAccounts.map((account) => (
                 <div
                   key={account.id}
                   className="flex-shrink-0 flex items-center gap-2 px-2.5 py-2 rounded-lg bg-muted/40 border border-border/30 min-w-[140px] max-w-[180px]"
@@ -305,7 +333,7 @@ export function LinkedAccountsPanel({ onRefresh, onHoldingsSync, compact = false
               variant="outline"
               size="sm"
               onClick={handleSync}
-              disabled={syncing || linkedAccounts.length === 0}
+              disabled={syncing || displayAccounts.length === 0 || usingSampleData}
             >
               {syncing ? (
                 <Loader2 className="h-4 w-4 mr-1 animate-spin" />
@@ -340,7 +368,7 @@ export function LinkedAccountsPanel({ onRefresh, onHoldingsSync, compact = false
           <div className="flex items-center justify-center py-8">
             <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
           </div>
-        ) : linkedAccounts.length === 0 ? (
+        ) : displayAccounts.length === 0 ? (
           <div className="text-center py-6">
             <Building2 className="h-10 w-10 text-muted-foreground mx-auto mb-3" />
             <p className="text-sm text-muted-foreground mb-2">
@@ -352,7 +380,7 @@ export function LinkedAccountsPanel({ onRefresh, onHoldingsSync, compact = false
           </div>
         ) : (
           <>
-            {linkedAccounts.map((account) => (
+            {displayAccounts.map((account) => (
               <div
                 key={account.id}
                 className="flex items-center justify-between p-3 rounded-lg bg-muted/30 border border-border/30"
@@ -425,7 +453,7 @@ export function LinkedAccountsPanel({ onRefresh, onHoldingsSync, compact = false
           </>
         )}
 
-        {mode === 'consumer' && linkedAccounts.length > 0 && (
+        {mode === 'consumer' && displayAccounts.length > 0 && !usingSampleData && (
           <div className="mt-4 p-3 rounded-lg bg-blue-500/10 border border-blue-500/20">
             <p className="text-xs text-blue-600 dark:text-blue-400">
               💡 <strong>Tip:</strong> Link all your investment accounts to get a complete picture of your portfolio health.

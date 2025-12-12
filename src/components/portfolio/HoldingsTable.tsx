@@ -175,11 +175,14 @@ function formatCurrency(value: number): string {
   }).format(value);
 }
 
-// Strip redundant account type suffixes from holding names
+// Strip redundant account type prefixes/suffixes from holding names
 function cleanHoldingName(name: string | undefined): string {
   if (!name) return '';
-  // Remove common account type suffixes in parentheses
+  // Remove common account type prefixes in square brackets at start
+  // e.g., "[Brokerage] Vanguard..." -> "Vanguard..."
+  // Also remove suffixes in parentheses at end
   return name
+    .replace(/^\s*\[(?:Brokerage|Trad IRA|Roth IRA|Traditional IRA|IRA)\]\s*/i, '')
     .replace(/\s*\((?:Traditional IRA|Roth IRA|Brokerage|Taxable|Tax-Advantaged|IRA)\)\s*$/i, '')
     .trim();
 }

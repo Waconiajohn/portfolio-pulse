@@ -45,6 +45,7 @@ import { MonteCarloSimulation } from './MonteCarloSimulation';
 import { CorrelationHeatmap } from '@/components/charts/CorrelationHeatmap';
 import { SettingsPanel } from './SettingsPanel';
 import { buildCardContracts } from '@/domain/cards/buildCards';
+import { getCardById } from '@/domain/cards/getCardById';
 import { buildActionPlan } from '@/domain/summary/buildActionPlan';
 import SummaryCard from '@/components/portfolio/SummaryCard';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -158,6 +159,11 @@ export function PortfolioDashboard() {
   );
 
   const actionPlan = useMemo(() => buildActionPlan(cardContracts, 6), [cardContracts]);
+
+  const selectedCard = useMemo(
+    () => getCardById(cardContracts, selectedCategory),
+    [cardContracts, selectedCategory]
+  );
 
   // Calculate advanced performance metrics
   const performanceMetrics = useMemo(() => {
@@ -428,6 +434,7 @@ export function PortfolioDashboard() {
                   onChecklistUpdate={setChecklist}
                   lifetimeIncomeInputs={lifetimeIncomeInputs}
                   onLifetimeIncomeUpdate={setLifetimeIncomeInputs}
+                  card={selectedCard}
                 />
               ) : (
                 <div className="space-y-4 sm:space-y-6">
@@ -538,6 +545,7 @@ export function PortfolioDashboard() {
                     onChecklistUpdate={setChecklist}
                     lifetimeIncomeInputs={lifetimeIncomeInputs}
                     onLifetimeIncomeUpdate={setLifetimeIncomeInputs}
+                    card={selectedCard}
                   />
                 ) : (
                   <div className="space-y-6">

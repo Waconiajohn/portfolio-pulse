@@ -22,9 +22,10 @@ import {
 interface LinkedAccountsPanelProps {
   onRefresh?: () => void;
   onHoldingsSync?: () => void;
+  compact?: boolean;
 }
 
-export function LinkedAccountsPanel({ onRefresh, onHoldingsSync }: LinkedAccountsPanelProps) {
+export function LinkedAccountsPanel({ onRefresh, onHoldingsSync, compact = false }: LinkedAccountsPanelProps) {
   const { mode } = useAppMode();
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -119,6 +120,23 @@ export function LinkedAccountsPanel({ onRefresh, onHoldingsSync }: LinkedAccount
 
   // Not authenticated
   if (!user) {
+    if (compact) {
+      return (
+        <Card className="border-border/50">
+          <CardContent className="p-3">
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex items-center gap-2">
+                <Building2 className="h-4 w-4 text-primary" />
+                <span className="text-sm font-medium">Linked Accounts</span>
+              </div>
+              <Button size="sm" onClick={() => navigate('/auth')}>
+                Sign In
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      );
+    }
     return (
       <Card className="border-border/50">
         <CardHeader className="pb-3">
@@ -143,6 +161,20 @@ export function LinkedAccountsPanel({ onRefresh, onHoldingsSync }: LinkedAccount
 
   // Plaid not configured
   if (!status.configured && !status.loading) {
+    if (compact) {
+      return (
+        <Card className="border-border/50">
+          <CardContent className="p-3">
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex items-center gap-2">
+                <Building2 className="h-4 w-4 text-muted-foreground" />
+                <span className="text-sm text-muted-foreground">Account linking not configured</span>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      );
+    }
     return (
       <Card className="border-border/50">
         <CardHeader className="pb-3">
@@ -166,6 +198,100 @@ export function LinkedAccountsPanel({ onRefresh, onHoldingsSync }: LinkedAccount
     );
   }
 
+  // Compact mobile layout
+  if (compact) {
+    return (
+      <Card className="border-border/50">
+        <CardContent className="p-3">
+          {/* Header row */}
+          <div className="flex items-center justify-between gap-2 mb-3">
+            <div className="flex items-center gap-2">
+              <Building2 className="h-4 w-4 text-primary" />
+              <span className="text-sm font-medium">Accounts</span>
+              {linkedAccounts.length > 0 && (
+                <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
+                  {linkedAccounts.length}
+                </Badge>
+              )}
+            </div>
+            <div className="flex gap-1.5">
+              {linkedAccounts.length > 0 && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 px-2"
+                  onClick={handleSync}
+                  disabled={syncing}
+                >
+                  {syncing ? (
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  ) : (
+                    <RefreshCw className="h-3.5 w-3.5" />
+                  )}
+                </Button>
+              )}
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-7 px-2 text-xs"
+                onClick={handleLinkAccount}
+                disabled={status.loading}
+              >
+                {status.loading ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  <Plus className="h-3.5 w-3.5" />
+                )}
+                <span className="ml-1">Link</span>
+              </Button>
+            </div>
+          </div>
+
+          {/* Accounts - horizontal scroll */}
+          {accountsLoading ? (
+            <div className="flex items-center justify-center py-4">
+              <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+            </div>
+          ) : linkedAccounts.length === 0 ? (
+            <div className="flex items-center gap-3 py-2 text-muted-foreground">
+              <Building2 className="h-8 w-8 opacity-50" />
+              <div>
+                <p className="text-xs font-medium">No accounts linked</p>
+                <p className="text-[10px] opacity-75">Tap Link to connect your brokerage</p>
+              </div>
+            </div>
+          ) : (
+            <div className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1 scrollbar-hide">
+              {linkedAccounts.map((account) => (
+                <div
+                  key={account.id}
+                  className="flex-shrink-0 flex items-center gap-2 px-2.5 py-2 rounded-lg bg-muted/40 border border-border/30 min-w-[140px] max-w-[180px]"
+                >
+                  <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+                    <Building2 className="h-4 w-4 text-primary" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-1">
+                      <span className="font-medium text-xs truncate">
+                        {account.institution_name || 'Account'}
+                      </span>
+                      {getSyncStatusIcon(account.sync_status)}
+                    </div>
+                    <div className="text-[10px] text-muted-foreground truncate">
+                      {account.account_name || account.account_type || ''}
+                      {account.account_mask && ` ••${account.account_mask}`}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    );
+  }
+
+  // Full desktop layout
   return (
     <Card className="border-border/50">
       <CardHeader className="pb-3">

@@ -523,7 +523,7 @@ export function PortfolioDashboard() {
                 ) : (
                   <div className="space-y-6">
                     {/* Linked Accounts above diagnostic cards on mobile */}
-                    {isConsumer && <LinkedAccountsPanel onHoldingsSync={() => {}} />}
+                    {isConsumer && <LinkedAccountsPanel onHoldingsSync={() => {}} compact />}
                     
                     {/* Swipeable Diagnostic Cards Carousel */}
                     <MobileDiagnosticCarousel

@@ -98,6 +98,81 @@ function groupHoldingsByAccountSubtype(holdings: Holding[]): AccountGroup[] {
     }));
 }
 
+interface AllocationBreakdown {
+  stocksPct: number;
+  bondsPct: number;
+  cashPct: number;
+  otherPct: number;
+}
+
+function computeAllocation(holdings: Holding[]): AllocationBreakdown {
+  const totals = { stocks: 0, bonds: 0, cash: 0, other: 0 };
+  
+  holdings.forEach(h => {
+    const value = h.shares * h.currentPrice;
+    const assetClass = h.assetClass || 'Other';
+    
+    if (assetClass === 'US Stocks' || assetClass === 'Intl Stocks') {
+      totals.stocks += value;
+    } else if (assetClass === 'Bonds') {
+      totals.bonds += value;
+    } else if (assetClass === 'Cash') {
+      totals.cash += value;
+    } else {
+      totals.other += value;
+    }
+  });
+  
+  const total = totals.stocks + totals.bonds + totals.cash + totals.other;
+  
+  if (total === 0) {
+    return { stocksPct: 0, bondsPct: 0, cashPct: 0, otherPct: 0 };
+  }
+  
+  return {
+    stocksPct: (totals.stocks / total) * 100,
+    bondsPct: (totals.bonds / total) * 100,
+    cashPct: (totals.cash / total) * 100,
+    otherPct: (totals.other / total) * 100,
+  };
+}
+
+function AllocationBar({ allocation }: { allocation: AllocationBreakdown }) {
+  const segments = [
+    { key: 'stocks', label: 'Stocks', pct: allocation.stocksPct, color: 'bg-blue-500' },
+    { key: 'bonds', label: 'Bonds', pct: allocation.bondsPct, color: 'bg-emerald-500' },
+    { key: 'cash', label: 'Cash', pct: allocation.cashPct, color: 'bg-amber-400' },
+    { key: 'other', label: 'Other', pct: allocation.otherPct, color: 'bg-purple-500' },
+  ].filter(s => s.pct > 0);
+
+  if (segments.length === 0) return null;
+
+  return (
+    <div className="w-full space-y-1">
+      {/* Bar */}
+      <div className="h-2 rounded-full overflow-hidden flex bg-muted">
+        {segments.map((seg, idx) => (
+          <div
+            key={seg.key}
+            className={cn(seg.color, idx === 0 && 'rounded-l-full', idx === segments.length - 1 && 'rounded-r-full')}
+            style={{ width: `${seg.pct}%` }}
+          />
+        ))}
+      </div>
+      {/* Legend */}
+      <div className="flex flex-wrap gap-x-3 gap-y-0.5 text-xs text-muted-foreground">
+        {segments.map(seg => (
+          <div key={seg.key} className="flex items-center gap-1">
+            <div className={cn('w-2 h-2 rounded-sm', seg.color)} />
+            <span>{seg.label}</span>
+            <span className="font-mono">{seg.pct.toFixed(0)}%</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function formatCurrency(value: number): string {
   return new Intl.NumberFormat('en-US', {
     style: 'currency',
@@ -613,6 +688,7 @@ export function HoldingsTable({ holdings, onUpdate }: HoldingsTableProps) {
           {accountGroups.map((group, groupIndex) => {
             const percentOfTotal = totalValue > 0 ? (group.totalValue / totalValue) * 100 : 0;
             const isExpanded = expandedSections[group.subtype];
+            const allocation = computeAllocation(group.holdings);
             
             return (
               <Collapsible
@@ -622,32 +698,39 @@ export function HoldingsTable({ holdings, onUpdate }: HoldingsTableProps) {
               >
                 {/* Account Section Header - Clickable */}
                 <CollapsibleTrigger asChild>
-                  <button
-                    className="w-full flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 p-3 rounded-lg bg-muted/30 border hover:bg-muted/50 transition-colors cursor-pointer text-left"
+                  <div
+                    className="w-full p-3 rounded-lg bg-muted/30 border hover:bg-muted/50 transition-colors cursor-pointer space-y-2"
                   >
-                    <div className="flex items-center gap-2">
-                      <ChevronDown
-                        size={18}
-                        className={cn(
-                          "text-muted-foreground transition-transform duration-200",
-                          isExpanded ? "rotate-0" : "-rotate-90"
-                        )}
-                      />
-                      <h3 className="font-semibold text-foreground">{group.label}</h3>
-                      <Badge variant="secondary" className="text-xs">
-                        {group.taxLabel}
-                      </Badge>
-                      <span className="text-xs text-muted-foreground">
-                        ({group.holdings.length} holding{group.holdings.length !== 1 ? 's' : ''})
-                      </span>
+                    {/* Top row: account info */}
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                      <div className="flex items-center gap-2">
+                        <ChevronDown
+                          size={18}
+                          className={cn(
+                            "text-muted-foreground transition-transform duration-200 shrink-0",
+                            isExpanded ? "rotate-0" : "-rotate-90"
+                          )}
+                        />
+                        <h3 className="font-semibold text-foreground">{group.label}</h3>
+                        <Badge variant="secondary" className="text-xs">
+                          {group.taxLabel}
+                        </Badge>
+                        <span className="text-xs text-muted-foreground">
+                          ({group.holdings.length} holding{group.holdings.length !== 1 ? 's' : ''})
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-4 text-sm pl-6 sm:pl-0">
+                        <span className="font-mono font-medium">{formatCurrency(group.totalValue)}</span>
+                        <span className="text-muted-foreground">
+                          {percentOfTotal.toFixed(1)}%
+                        </span>
+                      </div>
                     </div>
-                    <div className="flex items-center gap-4 text-sm pl-6 sm:pl-0">
-                      <span className="font-mono font-medium">{formatCurrency(group.totalValue)}</span>
-                      <span className="text-muted-foreground">
-                        {percentOfTotal.toFixed(1)}%
-                      </span>
+                    {/* Allocation bar */}
+                    <div className="pl-6">
+                      <AllocationBar allocation={allocation} />
                     </div>
-                  </button>
+                  </div>
                 </CollapsibleTrigger>
 
                 {/* Account Holdings Table */}

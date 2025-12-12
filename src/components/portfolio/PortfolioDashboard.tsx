@@ -27,6 +27,7 @@ import { MobileMetricsCarousel } from './MobileMetricsCarousel';
 import { MobileSettingsSheet } from './MobileSettingsSheet';
 import { BottomNavigation } from './BottomNavigation';
 import { Header } from './Header';
+import { MobileDiagnosticCarousel } from './MobileDiagnosticCarousel';
 import { HoldingsTable } from './HoldingsTable';
 import { DiagnosticCard } from './DiagnosticCard';
 import { PerformanceMetricsCard } from './PerformanceMetricsCard';
@@ -515,22 +516,17 @@ export function PortfolioDashboard() {
                     onChecklistUpdate={setChecklist}
                   />
                 ) : (
-                  <div className="space-y-3">
-                    {diagnosticEntries.map(([key, config]) => (
-                      <DiagnosticCard
-                        key={key}
-                        name={config.name}
-                        iconName={config.icon}
-                        categoryKey={key}
-                        result={analysis.diagnostics[key as keyof typeof analysis.diagnostics]}
-                        onViewDetails={() => setSelectedCategory(key)}
-                        scoringConfig={scoringConfig}
-                        riskTolerance={clientInfo.riskTolerance}
-                      />
-                    ))}
+                  <div className="space-y-6">
+                    {/* Swipeable Diagnostic Cards Carousel */}
+                    <MobileDiagnosticCarousel
+                      analysis={analysis}
+                      scoringConfig={scoringConfig}
+                      riskTolerance={clientInfo.riskTolerance}
+                      onViewDetails={(key) => setSelectedCategory(key)}
+                    />
                     
                     {/* Inline sidebar content on mobile */}
-                    <div className="pt-4">
+                    <div className="pt-2">
                       <SidebarContent />
                     </div>
                   </div>

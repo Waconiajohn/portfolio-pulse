@@ -2,6 +2,7 @@
 import type { PortfolioAnalysis, Recommendation, Holding } from "@/types/portfolio";
 import type { CardContract, CardAction } from "./types";
 import { computeSeverity } from "./severityPolicy";
+import { inferAccountSubtype, type AccountBucket } from "@/domain/accounts/inferAccountSubtype";
 
 const TITLE_MAP: Record<CardContract["id"], string> = {
   riskDiversification: "Diversification & Concentration",
@@ -75,25 +76,6 @@ const WHY: Partial<Record<CardContract["id"], string>> = {
     "Metrics like Sharpe and drawdown help you compare strategies on a consistent, risk-aware basis.",
 };
 
-type AccountBucket = "Brokerage" | "Traditional IRA" | "Roth IRA" | "Unknown";
-
-function inferAccountBucket(holding: Holding): AccountBucket {
-  const name = (holding.name || "").toLowerCase();
-  
-  if (holding.accountType === "Taxable") {
-    return "Brokerage";
-  }
-  
-  // Tax-Advantaged: check name for Roth vs Traditional
-  if (name.includes("roth")) {
-    return "Roth IRA";
-  }
-  if (name.includes("trad ira") || name.includes("traditional") || name.includes("[trad ira]")) {
-    return "Traditional IRA";
-  }
-  // Default Tax-Advantaged to Traditional IRA
-  return "Traditional IRA";
-}
 
 interface AccountMetrics {
   bucket: AccountBucket;
@@ -112,7 +94,7 @@ function computeAccountMetrics(holdings: Holding[]): AccountMetrics[] {
   };
 
   holdings.forEach(h => {
-    const bucket = inferAccountBucket(h);
+    const bucket = inferAccountSubtype(h);
     buckets[bucket].push(h);
   });
 

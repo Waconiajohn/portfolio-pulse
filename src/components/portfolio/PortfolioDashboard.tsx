@@ -352,18 +352,6 @@ export function PortfolioDashboard() {
       {isConsumer && (
         <>
           {!excludeLinkedAccounts && <LinkedAccountsPanel onHoldingsSync={() => {}} sampleAccounts={sampleAccounts} />}
-          {holdings.length > 0 && (
-            <>
-              <ConsumerToolsPanel
-                portfolioValue={analysis.totalValue}
-                expenseRatio={analysis.totalFees / (analysis.totalValue || 1)}
-                riskTolerance={clientInfo.riskTolerance}
-                volatility={analysis.volatility}
-                expectedReturn={analysis.expectedReturn}
-                currentAge={clientInfo.currentAge}
-              />
-            </>
-          )}
         </>
       )}
 

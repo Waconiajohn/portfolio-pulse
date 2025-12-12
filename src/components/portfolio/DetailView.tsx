@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { DiagnosticResult, RiskTolerance, PlanningChecklist, GuaranteedIncomeSource, LifetimeIncomeInputs, GuaranteedIncomeSourceType } from '@/types/portfolio';
 import type { CardContract } from '@/domain/cards/types';
 import { PerformanceMetrics, MetricStatus, METRIC_EDUCATION } from '@/types/performance-metrics';
@@ -62,6 +63,7 @@ export function DetailView({
   onLifetimeIncomeUpdate,
   card
 }: DetailViewProps) {
+  const navigate = useNavigate();
   const { details } = result;
   const educationContent = getEducationContent(scoringConfig, riskTolerance);
   const education = educationContent[categoryKey];
@@ -1427,7 +1429,7 @@ export function DetailView({
                         size="sm"
                         onClick={() => {
                           if (a.deepLink) {
-                            window.location.href = a.deepLink;
+                            navigate(a.deepLink);
                           }
                         }}
                       >

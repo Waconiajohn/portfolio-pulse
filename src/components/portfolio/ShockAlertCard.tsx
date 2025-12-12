@@ -132,6 +132,7 @@ export default function ShockAlertCard({ alert, onExplain, onDismiss }: Props) {
                       onClick={(e) => {
                         e.stopPropagation();
                         onExplain();
+                        setIsExpanded(false);
                       }}
                     >
                       Explain why

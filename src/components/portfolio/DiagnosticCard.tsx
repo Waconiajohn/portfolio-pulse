@@ -16,6 +16,9 @@ import {
   ClipboardCheck,
   Wallet,
   FileQuestion,
+  Layers,
+  Activity,
+  Percent,
   LucideIcon
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -23,7 +26,8 @@ import { STATUS_LABELS, ScoringConfig, DEFAULT_SCORING_CONFIG } from '@/lib/scor
 
 const iconMap: Record<string, LucideIcon> = {
   Shield, ShieldAlert, TrendingUp, DollarSign, Receipt, 
-  PieChart, BarChart3, Umbrella, Settings2, ClipboardCheck, Wallet, FileQuestion
+  PieChart, BarChart3, Umbrella, Settings2, ClipboardCheck, Wallet, FileQuestion,
+  Layers, Activity, Percent
 };
 
 interface DiagnosticCardProps {

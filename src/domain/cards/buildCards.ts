@@ -17,7 +17,6 @@ const TITLE_MAP: Partial<Record<CardContract["id"], string>> = {
   planningGaps: "Planning Gaps",
   lifetimeIncomeSecurity: "Lifetime Income Security",
   performanceMetrics: "Performance Metrics",
-  summary: "Summary",
   crossAccountConcentration: "Cross-Account Risk",
 };
 

@@ -20,7 +20,7 @@ export type CardAction = {
 };
 
 export type CardContract = {
-  id: keyof PortfolioAnalysis["diagnostics"] | "summary" | "crossAccountConcentration";
+  id: keyof PortfolioAnalysis["diagnostics"] | "crossAccountConcentration";
   title: string;
   subtitle?: string;
   iconName?: string;

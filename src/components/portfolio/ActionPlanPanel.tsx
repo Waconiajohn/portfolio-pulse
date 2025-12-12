@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, forwardRef, useImperativeHandle } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -10,6 +10,11 @@ import type { Recommendation } from "@/types/portfolio";
 interface ActionPlanPanelProps {
   actionPlan: Recommendation[];
   onSelectCategory?: (categoryKey: string) => void;
+}
+
+export interface ActionPlanPanelRef {
+  expand: () => void;
+  toggle: () => void;
 }
 
 function priorityVariant(p: number): "destructive" | "secondary" | "outline" {
@@ -24,8 +29,14 @@ function priorityLabel(p: number): string {
   return "Low";
 }
 
-export function ActionPlanPanel({ actionPlan, onSelectCategory }: ActionPlanPanelProps) {
+export const ActionPlanPanel = forwardRef<ActionPlanPanelRef, ActionPlanPanelProps>(
+  function ActionPlanPanel({ actionPlan, onSelectCategory }, ref) {
   const [isExpanded, setIsExpanded] = useState(false);
+
+  useImperativeHandle(ref, () => ({
+    expand: () => setIsExpanded(true),
+    toggle: () => setIsExpanded(prev => !prev),
+  }));
 
   if (actionPlan.length === 0) {
     return null;
@@ -165,7 +176,7 @@ export function ActionPlanPanel({ actionPlan, onSelectCategory }: ActionPlanPane
       </AnimatePresence>
     </Card>
   );
-}
+});
 
 interface ActionItemProps {
   recommendation: Recommendation;

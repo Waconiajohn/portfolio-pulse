@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback, useEffect } from 'react';
+import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import { Holding, ClientInfo, PlanningChecklist, PortfolioAnalysis, LifetimeIncomeInputs } from '@/types/portfolio';
 import { analyzePortfolio } from '@/lib/analysis-engine';
 import { DIAGNOSTIC_CATEGORIES } from '@/lib/constants';
@@ -47,12 +47,13 @@ import { SettingsPanel } from './SettingsPanel';
 import { buildCardContracts } from '@/domain/cards/buildCards';
 import { getCardById } from '@/domain/cards/getCardById';
 import { buildActionPlan } from '@/domain/summary/buildActionPlan';
-import { ActionPlanPanel } from '@/components/portfolio/ActionPlanPanel';
+import { ActionPlanPanel, ActionPlanPanelRef } from '@/components/portfolio/ActionPlanPanel';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Textarea } from '@/components/ui/textarea';
-import { LayoutGrid, Table, FileText, LineChart, Menu } from 'lucide-react';
+import { LayoutGrid, Table, FileText, LineChart, Menu, ListTodo } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { toast } from 'sonner';
 
@@ -109,6 +110,15 @@ export function PortfolioDashboard() {
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  
+  // Ref for mobile Action Plan FAB
+  const actionPlanRef = useRef<ActionPlanPanelRef>(null);
+  const actionPlanContainerRef = useRef<HTMLDivElement>(null);
+  
+  const scrollToActionPlan = useCallback(() => {
+    actionPlanContainerRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    setTimeout(() => actionPlanRef.current?.expand(), 300);
+  }, []);
 
   // Sync profile data to clientInfo when profile loads
   useEffect(() => {
@@ -594,10 +604,13 @@ export function PortfolioDashboard() {
                     />
                     
                     {/* Action Plan below cards on mobile */}
-                    <ActionPlanPanel
-                      actionPlan={actionPlan}
-                      onSelectCategory={(key) => setSelectedCategory(key)}
-                    />
+                    <div ref={actionPlanContainerRef}>
+                      <ActionPlanPanel
+                        ref={actionPlanRef}
+                        actionPlan={actionPlan}
+                        onSelectCategory={(key) => setSelectedCategory(key)}
+                      />
+                    </div>
                     
                     {/* Inline sidebar content on mobile (excluding LinkedAccountsPanel) */}
                     <div className="pt-2">
@@ -631,6 +644,21 @@ export function PortfolioDashboard() {
           </div>
         )}
       </main>
+
+      {/* Mobile Action Plan FAB */}
+      {isMobile && activeTab === 'dashboard' && !selectedCategory && actionPlan.length > 0 && (
+        <Button
+          onClick={scrollToActionPlan}
+          className="fixed bottom-20 right-4 z-40 rounded-full h-12 px-4 shadow-lg"
+          size="sm"
+        >
+          <ListTodo className="h-4 w-4 mr-2" />
+          Plan
+          <Badge variant="secondary" className="ml-2 h-5 px-1.5 text-[10px]">
+            {actionPlan.length}
+          </Badge>
+        </Button>
+      )}
 
       {/* Mobile Bottom Navigation */}
       {isMobile && (

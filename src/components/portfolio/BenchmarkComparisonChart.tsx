@@ -292,14 +292,14 @@ export function BenchmarkComparisonChart({ analysis, initialValue = 100000 }: Be
             <table className="w-full text-sm" style={{ minWidth: '500px' }}>
               <thead className="bg-muted/30">
                 <tr>
-                  <th className="sticky left-0 z-10 bg-muted px-4 py-2 text-left font-medium text-muted-foreground">Metric</th>
+                  <th className="px-4 py-2 text-left font-medium text-muted-foreground whitespace-nowrap">Metric</th>
                   <th className="px-4 py-2 text-right font-medium text-muted-foreground whitespace-nowrap">vs S&P 500</th>
                   <th className="px-4 py-2 text-right font-medium text-muted-foreground whitespace-nowrap">vs 60/40</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
                 <tr>
-                  <td className="sticky left-0 z-10 bg-background px-4 py-3 whitespace-nowrap">Expected Return</td>
+                  <td className="px-4 py-3 whitespace-nowrap">Expected Return</td>
                   <td className="px-4 py-3 text-right">
                     <span className="flex items-center justify-end gap-1">
                       <TrendIcon value={summaryStats.returnVsSp} />
@@ -318,7 +318,7 @@ export function BenchmarkComparisonChart({ analysis, initialValue = 100000 }: Be
                   </td>
                 </tr>
                 <tr>
-                  <td className="sticky left-0 z-10 bg-background px-4 py-3 whitespace-nowrap">Sharpe Ratio (Risk-Adjusted)</td>
+                  <td className="px-4 py-3 whitespace-nowrap">Sharpe Ratio (Risk-Adj.)</td>
                   <td className="px-4 py-3 text-right">
                     <span className="flex items-center justify-end gap-1">
                       <TrendIcon value={summaryStats.sharpeVsSp} />
@@ -337,7 +337,7 @@ export function BenchmarkComparisonChart({ analysis, initialValue = 100000 }: Be
                   </td>
                 </tr>
                 <tr>
-                  <td className="sticky left-0 z-10 bg-background px-4 py-3 whitespace-nowrap">20-Year Projected Value</td>
+                  <td className="px-4 py-3 whitespace-nowrap">20-Year Projected</td>
                   <td className="px-4 py-3 text-right">
                     <span className="flex items-center justify-end gap-1">
                       <TrendIcon value={summaryStats.growthVsSp} />

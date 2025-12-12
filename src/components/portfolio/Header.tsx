@@ -8,10 +8,12 @@ import { ModeToggle } from './ModeToggle';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { FileDown, ChevronDown, Database } from 'lucide-react';
+import { FileDown, ChevronDown, Database, LogIn, LogOut, User } from 'lucide-react';
 import { generatePDF } from '@/lib/pdf-export';
 import { toast } from 'sonner';
 import { useAppMode } from '@/contexts/AppModeContext';
+import { useAuth } from '@/hooks/useAuth';
+import { useNavigate } from 'react-router-dom';
 
 interface HeaderProps {
   clientInfo: ClientInfo;
@@ -71,6 +73,13 @@ export function Header({
   };
 
   const { isAdvisor } = useAppMode();
+  const { user, signOut } = useAuth();
+  const navigate = useNavigate();
+
+  const handleSignOut = async () => {
+    await signOut();
+    toast.success('Signed out successfully');
+  };
 
   // Handle date of birth change and auto-calculate age
   const handleDateOfBirthChange = (dateOfBirth: string) => {
@@ -96,6 +105,27 @@ export function Header({
             </div>
           </div>
           <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
+            {user ? (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" size="sm" className="gap-1.5">
+                    <User size={14} />
+                    <span className="hidden sm:inline max-w-[100px] truncate">{user.email}</span>
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem onClick={handleSignOut}>
+                    <LogOut size={14} className="mr-2" />
+                    Sign Out
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            ) : (
+              <Button variant="outline" size="sm" onClick={() => navigate('/auth')} className="gap-1.5">
+                <LogIn size={14} />
+                <span className="hidden sm:inline">Sign In</span>
+              </Button>
+            )}
             <ModeToggle />
             <Button variant="outline" size="sm" onClick={onLoadSample} className="gap-1.5 sm:gap-2 text-xs sm:text-sm">
               <Database size={14} />

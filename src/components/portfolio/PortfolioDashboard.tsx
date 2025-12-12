@@ -38,7 +38,7 @@ import { EfficientFrontierChart } from './EfficientFrontierChart';
 import { StressTestChart } from './StressTestChart';
 import { AssetAllocationChart } from './AssetAllocationChart';
 import { BenchmarkComparisonChart } from './BenchmarkComparisonChart';
-import { LinkedAccountsPanel } from './LinkedAccountsPanel';
+import { LinkedAccountsPanel, SampleAccount } from './LinkedAccountsPanel';
 import { ConsumerToolsPanel } from './ConsumerToolsPanel';
 import { ClientManager, CompliancePanel } from './advisor';
 import { MonteCarloSimulation } from './MonteCarloSimulation';
@@ -95,6 +95,7 @@ export function PortfolioDashboard() {
   
   // Local state for holdings (supports both authenticated and unauthenticated use)
   const [localHoldings, setLocalHoldings] = useState<Holding[]>([]);
+  const [sampleAccounts, setSampleAccounts] = useState<SampleAccount[]>([]);
   const holdings = user ? (dbHoldings.length > 0 ? dbHoldings : localHoldings) : localHoldings;
   
   const [clientInfo, setClientInfo] = useState<ClientInfo>(initialClientInfo);
@@ -225,6 +226,42 @@ export function PortfolioDashboard() {
 
   const handleLoadSample = useCallback(() => {
     setLocalHoldings(SAMPLE_HOLDINGS);
+    
+    // Create sample accounts from holdings by grouping
+    const brokerageHoldings = SAMPLE_HOLDINGS.filter(h => h.id.startsWith('br-'));
+    const tradIraHoldings = SAMPLE_HOLDINGS.filter(h => h.id.startsWith('ira-'));
+    const rothIraHoldings = SAMPLE_HOLDINGS.filter(h => h.id.startsWith('roth-'));
+    
+    const calcTotal = (holdings: typeof SAMPLE_HOLDINGS) => 
+      holdings.reduce((sum, h) => sum + h.shares * h.currentPrice, 0);
+    
+    setSampleAccounts([
+      {
+        id: 'sample-brokerage',
+        institution_name: 'Vanguard',
+        account_name: 'Brokerage Account',
+        account_type: 'Taxable',
+        account_mask: '4821',
+        total_value: calcTotal(brokerageHoldings),
+      },
+      {
+        id: 'sample-trad-ira',
+        institution_name: 'Fidelity',
+        account_name: 'Traditional IRA',
+        account_type: 'Tax-Advantaged',
+        account_mask: '7392',
+        total_value: calcTotal(tradIraHoldings),
+      },
+      {
+        id: 'sample-roth-ira',
+        institution_name: 'Schwab',
+        account_name: 'Roth IRA',
+        account_type: 'Tax-Advantaged',
+        account_mask: '1056',
+        total_value: calcTotal(rothIraHoldings),
+      },
+    ]);
+    
     setClientInfo({
       name: 'John & Sarah Smith',
       meetingDate: new Date().toISOString().split('T')[0],
@@ -314,7 +351,7 @@ export function PortfolioDashboard() {
     <div className="space-y-4 sm:space-y-6">
       {isConsumer && (
         <>
-          {!excludeLinkedAccounts && <LinkedAccountsPanel onHoldingsSync={() => {}} />}
+          {!excludeLinkedAccounts && <LinkedAccountsPanel onHoldingsSync={() => {}} sampleAccounts={sampleAccounts} />}
           {holdings.length > 0 && (
             <>
               <PerformanceMetricsCard 
@@ -591,7 +628,7 @@ export function PortfolioDashboard() {
                     )}
                     
                     {/* Linked Accounts above diagnostic cards on mobile */}
-                    {isConsumer && <LinkedAccountsPanel onHoldingsSync={() => {}} compact />}
+                    {isConsumer && <LinkedAccountsPanel onHoldingsSync={() => {}} compact sampleAccounts={sampleAccounts} />}
                     
                     {/* Swipeable Diagnostic Cards Carousel */}
                     <MobileDiagnosticCarousel

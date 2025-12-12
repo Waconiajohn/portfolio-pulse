@@ -66,6 +66,12 @@ export function MonteCarloSimulation({
 
   const years = Math.max(targetAge - currentAge, 1);
 
+  const formatCompact = (value: number) => {
+    if (value >= 1000000) {
+      return `$${(value / 1000000).toFixed(1)}M`;
+    }
+    return `$${(value / 1000).toFixed(0)}K`;
+  };
   // Run Monte Carlo simulation
   const results = useMemo((): SimulationResult => {
     const outcomes: number[] = [];
@@ -145,12 +151,6 @@ export function MonteCarloSimulation({
     return `$${(value / 1000).toFixed(0)}K`;
   };
 
-  const formatCompact = (value: number) => {
-    if (value >= 1000000) {
-      return `$${(value / 1000000).toFixed(1)}M`;
-    }
-    return `$${(value / 1000).toFixed(0)}K`;
-  };
 
   const getSuccessColor = () => {
     if (results.successRate >= 80) return 'text-green-500';

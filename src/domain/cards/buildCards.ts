@@ -2,6 +2,31 @@
 import type { PortfolioAnalysis, Recommendation } from "@/types/portfolio";
 import type { CardContract, CardSeverity, CardAction } from "./types";
 
+const TITLE_MAP: Record<CardContract["id"], string> = {
+  riskDiversification: "Diversification & Concentration",
+  downsideResilience: "Downside Resilience",
+  performanceOptimization: "Performance vs Market",
+  costAnalysis: "Fees & Expense Drag",
+  taxEfficiency: "Tax Efficiency",
+  riskAdjusted: "Risk-Adjusted Performance",
+  planningGaps: "Planning Gaps",
+  lifetimeIncomeSecurity: "Lifetime Income Security",
+  performanceMetrics: "Performance Metrics",
+  summary: "Summary",
+};
+
+const ICON_MAP: Partial<Record<CardContract["id"], string>> = {
+  riskDiversification: "PieChart",
+  downsideResilience: "ShieldAlert",
+  performanceOptimization: "TrendingUp",
+  costAnalysis: "Percent",
+  taxEfficiency: "Receipt",
+  riskAdjusted: "Activity",
+  planningGaps: "ClipboardList",
+  lifetimeIncomeSecurity: "Wallet",
+  performanceMetrics: "BarChart",
+};
+
 function severityFrom(status: "GREEN" | "YELLOW" | "RED", score: number): CardSeverity {
   // v1 heuristic: red + low score = extreme. adjust later.
   if (status === "RED" && score <= 35) return "EXTREME";
@@ -65,7 +90,8 @@ export function buildCardContracts(analysis: PortfolioAnalysis): CardContract[] 
 
     cards.push({
       id,
-      title: String(id),
+      title: TITLE_MAP[id] ?? String(id),
+      iconName: ICON_MAP[id],
       whyItMatters: WHY[id] ?? "This diagnostic highlights a portfolio health dimension.",
       status: r.status,
       score: r.score,

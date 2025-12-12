@@ -29,6 +29,7 @@ import { BenchmarkComparisonChart } from './BenchmarkComparisonChart';
 import { LinkedAccountsPanel } from './LinkedAccountsPanel';
 import { ConsumerToolsPanel } from './ConsumerToolsPanel';
 import { ClientManager, CompliancePanel } from './advisor';
+import { MonteCarloSimulation } from './MonteCarloSimulation';
 import { CorrelationHeatmap } from '@/components/charts/CorrelationHeatmap';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -372,6 +373,14 @@ export function PortfolioDashboard() {
                   </div>
                 </CardContent>
               </Card>
+              
+              {/* Monte Carlo Simulation */}
+              <MonteCarloSimulation
+                portfolioValue={analysis.totalValue}
+                expectedReturn={analysis.expectedReturn}
+                volatility={analysis.volatility}
+                currentAge={clientInfo.currentAge}
+              />
             </div>
           </TabsContent>
 

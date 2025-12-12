@@ -729,19 +729,19 @@ export const HoldingsTable = forwardRef<HTMLDivElement, HoldingsTableProps>(func
 
                 {/* Account Holdings Table */}
                 <CollapsibleContent className="pt-2">
-                  <ScrollArea className="w-full">
-                    <div className="rounded-lg border border-border overflow-hidden min-w-[700px]">
+                  <div className="overflow-x-auto">
+                    <div className="rounded-lg border border-border overflow-hidden" style={{ minWidth: '900px' }}>
                       <Table>
                         <TableHeader>
                           <TableRow className="bg-muted/50 hover:bg-muted/50">
-                            <TableHead className="w-24 min-w-[90px]">Ticker</TableHead>
-                            <TableHead className="w-36 min-w-[140px]">Name</TableHead>
-                            <TableHead className="w-24 min-w-[90px] text-right">Shares</TableHead>
-                            <TableHead className="w-24 min-w-[90px] text-right">Price</TableHead>
-                            <TableHead className="w-24 min-w-[90px] text-right">Cost</TableHead>
-                            <TableHead className="w-28 min-w-[110px]">Class</TableHead>
-                            <TableHead className="w-28 min-w-[110px] text-right">Value</TableHead>
-                            <TableHead className="w-10 min-w-[40px]"></TableHead>
+                            <TableHead style={{ width: '100px', minWidth: '100px' }}>Ticker</TableHead>
+                            <TableHead style={{ width: '200px', minWidth: '200px' }}>Name</TableHead>
+                            <TableHead style={{ width: '100px', minWidth: '100px' }} className="text-right">Shares</TableHead>
+                            <TableHead style={{ width: '100px', minWidth: '100px' }} className="text-right">Price</TableHead>
+                            <TableHead style={{ width: '100px', minWidth: '100px' }} className="text-right">Cost</TableHead>
+                            <TableHead style={{ width: '130px', minWidth: '130px' }}>Class</TableHead>
+                            <TableHead style={{ width: '120px', minWidth: '120px' }} className="text-right">Value</TableHead>
+                            <TableHead style={{ width: '50px', minWidth: '50px' }}></TableHead>
                           </TableRow>
                         </TableHeader>
                         <TableBody>
@@ -749,8 +749,7 @@ export const HoldingsTable = forwardRef<HTMLDivElement, HoldingsTableProps>(func
                         </TableBody>
                       </Table>
                     </div>
-                    <ScrollBar orientation="horizontal" />
-                  </ScrollArea>
+                  </div>
                 </CollapsibleContent>
 
                 {/* Divider between sections (except last) */}

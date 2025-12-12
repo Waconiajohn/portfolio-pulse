@@ -44,6 +44,7 @@ import { ClientManager, CompliancePanel } from './advisor';
 import { MonteCarloSimulation } from './MonteCarloSimulation';
 import { CorrelationHeatmap } from '@/components/charts/CorrelationHeatmap';
 import { SettingsPanel } from './SettingsPanel';
+import { buildCardContracts } from '@/domain/cards/buildCards';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Textarea } from '@/components/ui/textarea';
@@ -148,6 +149,11 @@ export function PortfolioDashboard() {
   const analysis: PortfolioAnalysis = useMemo(() => {
     return analyzePortfolio(holdings, clientInfo, checklist, scoringConfig, adviceModel, advisorFee, lifetimeIncomeInputs);
   }, [holdings, clientInfo, checklist, scoringConfig, adviceModel, advisorFee, lifetimeIncomeInputs]);
+
+  const cardContracts = useMemo(
+    () => (analysis ? buildCardContracts(analysis) : []),
+    [analysis]
+  );
 
   // Calculate advanced performance metrics
   const performanceMetrics = useMemo(() => {
@@ -423,15 +429,21 @@ export function PortfolioDashboard() {
                 <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 sm:gap-6">
                   <div className="lg:col-span-3">
                     <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3 sm:gap-4">
-                      {diagnosticEntries.map(([key, config]) => (
+                      {cardContracts.map((c) => (
                         <DiagnosticCard
-                          key={key}
-                          name={config.name}
-                          iconName={config.icon}
-                          categoryKey={key}
-                          result={analysis.diagnostics[key as keyof typeof analysis.diagnostics]}
-                          onViewDetails={() => setSelectedCategory(key)}
-                          scoringConfig={scoringConfig}
+                          key={String(c.id)}
+                          name={String(c.title)}
+                          iconName={"Shield"}
+                          categoryKey={String(c.id)}
+                          result={{
+                            status: c.status,
+                            score: c.score,
+                            keyFinding: c.keyFinding,
+                            headlineMetric: c.headlineMetric,
+                            details: c.details,
+                          }}
+                          onViewDetails={() => setSelectedCategory(String(c.id))}
+                          scoringConfig={baseScoringConfig}
                           riskTolerance={clientInfo.riskTolerance}
                         />
                       ))}

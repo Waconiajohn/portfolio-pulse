@@ -25,9 +25,25 @@ function mergeActions(cards: CardContract[]): ShockAlert["actions"] {
   return deduped.slice(0, 4);
 }
 
-function computeSeverity(extremeCount: number, redCount: number): ShockSeverity {
+function computeSeverity(cards: CardContract[]): ShockSeverity {
+  const extremeCards = cards.filter((c) => c.severity === "EXTREME");
+  const redCards = cards.filter((c) => c.status === "RED");
+  const yellowCards = cards.filter((c) => c.status === "YELLOW");
+
+  const extremeCount = extremeCards.length;
+  const redCount = redCards.length;
+
+  // Keep EXTREME meaningfully rare
   if (extremeCount >= 2 || redCount >= 2) return "EXTREME";
-  if (extremeCount === 1 || redCount === 1) return "ELEVATED";
+
+  // Tighten ELEVATED to avoid alert fatigue
+  if (extremeCount >= 1 || redCount >= 1) return "ELEVATED";
+
+  if (yellowCards.length >= 2) {
+    const lowestYellowScore = Math.min(...yellowCards.map((c) => (c.score ?? 100)));
+    if (lowestYellowScore <= 60) return "ELEVATED";
+  }
+
   return "NORMAL";
 }
 
@@ -37,7 +53,7 @@ export function detectShockAlert(cards: CardContract[]): ShockAlert | null {
   const extremeCards = cards.filter((c) => c.severity === "EXTREME");
   const redCards = cards.filter((c) => c.status === "RED");
 
-  const severity = computeSeverity(extremeCards.length, redCards.length);
+  const severity = computeSeverity(cards);
   if (severity === "NORMAL") return null;
 
   // Pick top drivers: prefer EXTREME cards, otherwise RED cards

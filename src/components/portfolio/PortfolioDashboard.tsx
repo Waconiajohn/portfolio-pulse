@@ -19,6 +19,13 @@ import { useAuth } from '@/hooks/useAuth';
 import { useProfile } from '@/hooks/useProfile';
 import { useHoldings } from '@/hooks/useHoldings';
 import { useIncomeSources } from '@/hooks/useIncomeSources';
+import { useIsMobile } from '@/hooks/use-mobile';
+
+// Components
+import { MobileHeader } from './MobileHeader';
+import { MobileMetricsCarousel } from './MobileMetricsCarousel';
+import { MobileSettingsSheet } from './MobileSettingsSheet';
+import { BottomNavigation } from './BottomNavigation';
 import { Header } from './Header';
 import { HoldingsTable } from './HoldingsTable';
 import { DiagnosticCard } from './DiagnosticCard';
@@ -35,10 +42,11 @@ import { ConsumerToolsPanel } from './ConsumerToolsPanel';
 import { ClientManager, CompliancePanel } from './advisor';
 import { MonteCarloSimulation } from './MonteCarloSimulation';
 import { CorrelationHeatmap } from '@/components/charts/CorrelationHeatmap';
+import { SettingsPanel } from './SettingsPanel';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Textarea } from '@/components/ui/textarea';
-import { LayoutGrid, Table, FileText, LineChart, Menu, X } from 'lucide-react';
+import { LayoutGrid, Table, FileText, LineChart, Menu } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { toast } from 'sonner';
@@ -71,6 +79,7 @@ const initialLifetimeIncomeInputs: LifetimeIncomeInputs = {
 };
 
 export function PortfolioDashboard() {
+  const isMobile = useIsMobile();
   const { isConsumer, isAdvisor, messaging } = useAppMode();
   const { user } = useAuth();
   const { profile, loading: profileLoading, updateProfile, currentAge } = useProfile();
@@ -93,6 +102,7 @@ export function PortfolioDashboard() {
   const [advisorFee, setAdvisorFee] = useState(0);
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
 
   // Sync profile data to clientInfo when profile loads
   useEffect(() => {
@@ -127,7 +137,6 @@ export function PortfolioDashboard() {
   // Handle holdings update - sync to database if authenticated
   const handleHoldingsUpdate = useCallback((newHoldings: Holding[]) => {
     setLocalHoldings(newHoldings);
-    // Note: For bulk updates, use bulkUpsertHoldings when user is authenticated
   }, []);
 
   // Apply risk tolerance adjustments to the scoring config
@@ -174,7 +183,6 @@ export function PortfolioDashboard() {
     setClientInfo(newClientInfo);
     
     if (user && profile) {
-      // Sync to database
       const updates: Record<string, unknown> = {};
       if (newClientInfo.name !== profile.name) updates.name = newClientInfo.name;
       if (newClientInfo.meetingDate !== profile.date_of_birth) updates.date_of_birth = newClientInfo.meetingDate;
@@ -248,6 +256,15 @@ export function PortfolioDashboard() {
 
   const diagnosticEntries = Object.entries(DIAGNOSTIC_CATEGORIES) as Array<[keyof typeof DIAGNOSTIC_CATEGORIES, typeof DIAGNOSTIC_CATEGORIES[keyof typeof DIAGNOSTIC_CATEGORIES]]>;
 
+  // Handle tab changes from bottom navigation
+  const handleTabChange = (tab: string) => {
+    if (tab === 'settings') {
+      setSettingsOpen(true);
+    } else {
+      setActiveTab(tab);
+    }
+  };
+
   // Show onboarding wizard for new authenticated users
   if (showOnboarding) {
     return <OnboardingWizard onComplete={() => setShowOnboarding(false)} />;
@@ -255,8 +272,7 @@ export function PortfolioDashboard() {
 
   // Sidebar content (shared between mobile sheet and desktop)
   const SidebarContent = () => (
-    <div className="space-y-6">
-      {/* Consumer Mode: Linked Accounts & Tools */}
+    <div className="space-y-4 sm:space-y-6">
       {isConsumer && (
         <>
           <LinkedAccountsPanel onHoldingsSync={() => {}} />
@@ -279,7 +295,6 @@ export function PortfolioDashboard() {
         </>
       )}
 
-      {/* Advisor Mode: Client Manager & Compliance */}
       {isAdvisor && (
         <>
           <ClientManager 
@@ -304,81 +319,203 @@ export function PortfolioDashboard() {
   );
 
   return (
-    <div className="min-h-screen bg-background">
-      <Header
-        clientInfo={clientInfo}
-        analysis={analysis}
-        holdings={holdings}
-        notes={notes}
-        assumptions={assumptions}
-        scoringConfig={scoringConfig}
-        adviceModel={adviceModel}
-        advisorFee={advisorFee}
-        onClientInfoChange={handleClientInfoChange}
-        onAssumptionsChange={handleAssumptionsChange}
-        onScoringConfigChange={handleScoringConfigChange}
-        onAdviceModelChange={setAdviceModel}
-        onAdvisorFeeChange={setAdvisorFee}
-        onLoadSample={handleLoadSample}
-      />
+    <div className="min-h-screen bg-background pb-20 md:pb-0">
+      {/* Mobile Header */}
+      {isMobile ? (
+        <>
+          <MobileHeader 
+            analysis={analysis} 
+            onSettingsOpen={() => setSettingsOpen(true)} 
+          />
+          <MobileMetricsCarousel analysis={analysis} scoringConfig={scoringConfig} />
+          <MobileSettingsSheet
+            open={settingsOpen}
+            onOpenChange={setSettingsOpen}
+            clientInfo={clientInfo}
+            analysis={analysis}
+            holdings={holdings}
+            notes={notes}
+            assumptions={assumptions}
+            scoringConfig={scoringConfig}
+            adviceModel={adviceModel}
+            advisorFee={advisorFee}
+            onClientInfoChange={handleClientInfoChange}
+            onLoadSample={handleLoadSample}
+          />
+        </>
+      ) : (
+        <Header
+          clientInfo={clientInfo}
+          analysis={analysis}
+          holdings={holdings}
+          notes={notes}
+          assumptions={assumptions}
+          scoringConfig={scoringConfig}
+          adviceModel={adviceModel}
+          advisorFee={advisorFee}
+          onClientInfoChange={handleClientInfoChange}
+          onAssumptionsChange={handleAssumptionsChange}
+          onScoringConfigChange={handleScoringConfigChange}
+          onAdviceModelChange={setAdviceModel}
+          onAdvisorFeeChange={setAdvisorFee}
+          onLoadSample={handleLoadSample}
+        />
+      )}
 
       <main className="container mx-auto px-3 sm:px-4 py-4 sm:py-6">
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4 sm:space-y-6">
-          {/* Mobile-friendly tab navigation */}
-          <div className="flex items-center gap-2">
-            {/* Mobile sidebar trigger */}
-            <Sheet open={sidebarOpen} onOpenChange={setSidebarOpen}>
-              <SheetTrigger asChild>
-                <Button variant="outline" size="icon" className="lg:hidden shrink-0">
-                  <Menu className="h-4 w-4" />
-                </Button>
-              </SheetTrigger>
-              <SheetContent side="left" className="w-[320px] sm:w-[400px] overflow-y-auto">
-                <div className="pt-6">
-                  <SidebarContent />
+        {/* Desktop Tab Navigation */}
+        {!isMobile && (
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4 sm:space-y-6">
+            <div className="flex items-center gap-2">
+              {/* Mobile sidebar trigger for tablets */}
+              <Sheet open={sidebarOpen} onOpenChange={setSidebarOpen}>
+                <SheetTrigger asChild>
+                  <Button variant="outline" size="icon" className="lg:hidden shrink-0">
+                    <Menu className="h-4 w-4" />
+                  </Button>
+                </SheetTrigger>
+                <SheetContent side="left" className="w-[320px] sm:w-[400px] overflow-y-auto">
+                  <div className="pt-6">
+                    <SidebarContent />
+                  </div>
+                </SheetContent>
+              </Sheet>
+
+              <TabsList className="bg-muted/50 flex-1">
+                <TabsTrigger value="dashboard" className="gap-2">
+                  <LayoutGrid size={16} />
+                  Dashboard
+                </TabsTrigger>
+                <TabsTrigger value="holdings" className="gap-2">
+                  <Table size={16} />
+                  Holdings
+                </TabsTrigger>
+                <TabsTrigger value="charts" className="gap-2">
+                  <LineChart size={16} />
+                  Analytics
+                </TabsTrigger>
+                <TabsTrigger value="notes" className="gap-2">
+                  <FileText size={16} />
+                  Notes
+                </TabsTrigger>
+              </TabsList>
+            </div>
+
+            <TabsContent value="dashboard" className="space-y-4 sm:space-y-6">
+              {selectedCategory ? (
+                <DetailView
+                  name={DIAGNOSTIC_CATEGORIES[selectedCategory as keyof typeof DIAGNOSTIC_CATEGORIES].name}
+                  categoryKey={selectedCategory}
+                  result={analysis.diagnostics[selectedCategory as keyof typeof analysis.diagnostics]}
+                  onClose={() => setSelectedCategory(null)}
+                  scoringConfig={scoringConfig}
+                  riskTolerance={clientInfo.riskTolerance}
+                  clientAge={clientInfo.currentAge}
+                  inflationRate={assumptions.inflationRate}
+                  checklist={checklist}
+                  onChecklistUpdate={setChecklist}
+                />
+              ) : (
+                <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 sm:gap-6">
+                  <div className="lg:col-span-3">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3 sm:gap-4">
+                      {diagnosticEntries.map(([key, config]) => (
+                        <DiagnosticCard
+                          key={key}
+                          name={config.name}
+                          iconName={config.icon}
+                          categoryKey={key}
+                          result={analysis.diagnostics[key as keyof typeof analysis.diagnostics]}
+                          onViewDetails={() => setSelectedCategory(key)}
+                          scoringConfig={scoringConfig}
+                          riskTolerance={clientInfo.riskTolerance}
+                        />
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="hidden lg:block space-y-6">
+                    <SidebarContent />
+                  </div>
                 </div>
-              </SheetContent>
-            </Sheet>
+              )}
+            </TabsContent>
 
-            <TabsList className="bg-muted/50 flex-1 overflow-x-auto">
-              <TabsTrigger value="dashboard" className="gap-1.5 sm:gap-2 text-xs sm:text-sm">
-                <LayoutGrid size={14} />
-                <span className="hidden xs:inline">Dashboard</span>
-              </TabsTrigger>
-              <TabsTrigger value="holdings" className="gap-1.5 sm:gap-2 text-xs sm:text-sm">
-                <Table size={14} />
-                <span className="hidden xs:inline">Holdings</span>
-              </TabsTrigger>
-              <TabsTrigger value="charts" className="gap-1.5 sm:gap-2 text-xs sm:text-sm">
-                <LineChart size={14} />
-                <span className="hidden xs:inline">Analytics</span>
-              </TabsTrigger>
-              <TabsTrigger value="notes" className="gap-1.5 sm:gap-2 text-xs sm:text-sm">
-                <FileText size={14} />
-                <span className="hidden xs:inline">Notes</span>
-              </TabsTrigger>
-            </TabsList>
-          </div>
+            <TabsContent value="holdings">
+              <Card>
+                <CardHeader className="pb-3 sm:pb-6">
+                  <CardTitle className="text-base sm:text-lg">Portfolio Holdings</CardTitle>
+                </CardHeader>
+                <CardContent className="p-3 sm:p-6 pt-0">
+                  <HoldingsTable holdings={holdings} onUpdate={handleHoldingsUpdate} />
+                </CardContent>
+              </Card>
+            </TabsContent>
 
-          <TabsContent value="dashboard" className="space-y-4 sm:space-y-6">
-            {selectedCategory ? (
-              <DetailView
-                name={DIAGNOSTIC_CATEGORIES[selectedCategory as keyof typeof DIAGNOSTIC_CATEGORIES].name}
-                categoryKey={selectedCategory}
-                result={analysis.diagnostics[selectedCategory as keyof typeof analysis.diagnostics]}
-                onClose={() => setSelectedCategory(null)}
-                scoringConfig={scoringConfig}
-                riskTolerance={clientInfo.riskTolerance}
-                clientAge={clientInfo.currentAge}
-                inflationRate={assumptions.inflationRate}
-                checklist={checklist}
-                onChecklistUpdate={setChecklist}
-              />
-            ) : (
-              <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 sm:gap-6">
-                {/* Main diagnostic grid */}
-                <div className="lg:col-span-3">
-                  <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3 sm:gap-4">
+            <TabsContent value="charts" className="space-y-4 sm:space-y-6">
+              <BenchmarkComparisonChart analysis={analysis} initialValue={100000} />
+              
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
+                <EfficientFrontierChart analysis={analysis} holdings={holdings} />
+                <CorrelationHeatmap 
+                  data={correlationData} 
+                  title="Holdings Correlation Matrix"
+                  description={correlationAnalysis.hasIssues 
+                    ? `${correlationAnalysis.highCorrelations.length} high correlation pairs detected` 
+                    : 'Good diversification across holdings'}
+                />
+              </div>
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
+                <StressTestChart analysis={analysis} />
+                <AssetAllocationChart holdings={holdings} totalValue={analysis.totalValue} />
+              </div>
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
+                <PerformanceMetricsCard 
+                  metrics={performanceMetrics} 
+                  riskTolerance={clientInfo.riskTolerance}
+                />
+                <MonteCarloSimulation portfolioValue={analysis.totalValue} expectedReturn={analysis.expectedReturn} volatility={analysis.volatility} currentAge={clientInfo.currentAge} />
+              </div>
+            </TabsContent>
+
+            <TabsContent value="notes">
+              <Card>
+                <CardHeader className="pb-3 sm:pb-6">
+                  <CardTitle className="text-base sm:text-lg">Meeting Notes</CardTitle>
+                </CardHeader>
+                <CardContent className="p-3 sm:p-6 pt-0">
+                  <Textarea
+                    value={notes}
+                    onChange={(e) => setNotes(e.target.value)}
+                    placeholder="Enter meeting notes, observations, and action items..."
+                    className="min-h-[400px]"
+                  />
+                </CardContent>
+              </Card>
+            </TabsContent>
+          </Tabs>
+        )}
+
+        {/* Mobile Content (no tabs wrapper) */}
+        {isMobile && (
+          <div className="space-y-4">
+            {activeTab === 'dashboard' && (
+              <>
+                {selectedCategory ? (
+                  <DetailView
+                    name={DIAGNOSTIC_CATEGORIES[selectedCategory as keyof typeof DIAGNOSTIC_CATEGORIES].name}
+                    categoryKey={selectedCategory}
+                    result={analysis.diagnostics[selectedCategory as keyof typeof analysis.diagnostics]}
+                    onClose={() => setSelectedCategory(null)}
+                    scoringConfig={scoringConfig}
+                    riskTolerance={clientInfo.riskTolerance}
+                    clientAge={clientInfo.currentAge}
+                    inflationRate={assumptions.inflationRate}
+                    checklist={checklist}
+                    onChecklistUpdate={setChecklist}
+                  />
+                ) : (
+                  <div className="space-y-3">
                     {diagnosticEntries.map(([key, config]) => (
                       <DiagnosticCard
                         key={key}
@@ -391,114 +528,44 @@ export function PortfolioDashboard() {
                         riskTolerance={clientInfo.riskTolerance}
                       />
                     ))}
+                    
+                    {/* Inline sidebar content on mobile */}
+                    <div className="pt-4">
+                      <SidebarContent />
+                    </div>
                   </div>
-                </div>
-
-                {/* Desktop Sidebar - hidden on mobile */}
-                <div className="hidden lg:block space-y-6">
-                  <SidebarContent />
-                </div>
-              </div>
+                )}
+              </>
             )}
-          </TabsContent>
 
-          <TabsContent value="holdings">
-            <Card>
-              <CardHeader className="pb-3 sm:pb-6">
-                <CardTitle className="text-base sm:text-lg">Portfolio Holdings</CardTitle>
-              </CardHeader>
-              <CardContent className="p-3 sm:p-6 pt-0">
-                <HoldingsTable holdings={holdings} onUpdate={handleHoldingsUpdate} />
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          <TabsContent value="charts" className="space-y-4 sm:space-y-6">
-            {/* Benchmark Comparison - Full Width */}
-            <BenchmarkComparisonChart analysis={analysis} initialValue={100000} />
-            
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
-              <EfficientFrontierChart analysis={analysis} holdings={holdings} />
-              <CorrelationHeatmap 
-                data={correlationData} 
-                title="Holdings Correlation Matrix"
-                description={correlationAnalysis.hasIssues 
-                  ? `${correlationAnalysis.highCorrelations.length} high correlation pairs detected` 
-                  : 'Good diversification across holdings'}
-              />
-            </div>
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
-              <StressTestChart analysis={analysis} />
-              <AssetAllocationChart holdings={holdings} totalValue={analysis.totalValue} />
-            </div>
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
+            {activeTab === 'holdings' && (
               <Card>
                 <CardHeader className="pb-3">
-                  <CardTitle className="text-base">Performance Metrics</CardTitle>
+                  <CardTitle className="text-base">Portfolio Holdings</CardTitle>
                 </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="grid grid-cols-2 gap-3 sm:gap-4">
-                    <div className="p-3 sm:p-4 rounded-lg bg-muted/30 border border-border">
-                      <div className="text-xs text-muted-foreground uppercase tracking-wider">Sharpe Ratio</div>
-                      <div className="font-mono text-xl sm:text-2xl font-semibold mt-1">{analysis.sharpeRatio.toFixed(2)}</div>
-                      <div className="text-xs text-muted-foreground mt-1">Target: {scoringConfig.sharpe.portfolioTarget.toFixed(2)}</div>
-                    </div>
-                    <div className="p-3 sm:p-4 rounded-lg bg-muted/30 border border-border">
-                      <div className="text-xs text-muted-foreground uppercase tracking-wider">Expected Return</div>
-                      <div className="font-mono text-xl sm:text-2xl font-semibold mt-1 value-positive">{(analysis.expectedReturn * 100).toFixed(1)}%</div>
-                      <div className="text-xs text-muted-foreground mt-1">Annualized</div>
-                    </div>
-                    <div className="p-3 sm:p-4 rounded-lg bg-muted/30 border border-border">
-                      <div className="text-xs text-muted-foreground uppercase tracking-wider">Volatility</div>
-                      <div className="font-mono text-xl sm:text-2xl font-semibold mt-1">{(analysis.volatility * 100).toFixed(1)}%</div>
-                      <div className="text-xs text-muted-foreground mt-1">Standard Deviation</div>
-                    </div>
-                    <div className="p-3 sm:p-4 rounded-lg bg-muted/30 border border-border">
-                      <div className="text-xs text-muted-foreground uppercase tracking-wider">Fee Drag</div>
-                      <div className="font-mono text-xl sm:text-2xl font-semibold mt-1 value-negative">
-                        {((analysis.totalFees / (analysis.totalValue || 1)) * 100).toFixed(2)}%
-                      </div>
-                      <div className="text-xs text-muted-foreground mt-1">Annual cost</div>
-                    </div>
-                  </div>
-                  <div className="p-3 sm:p-4 rounded-lg bg-primary/10 border border-primary/20">
-                    <div className="text-sm font-medium">Optimization Potential</div>
-                    <div className="text-xs text-muted-foreground mt-1">
-                      Based on current analysis, the portfolio could potentially improve Sharpe ratio by 
-                      <span className="font-mono font-medium text-status-good"> +{((analysis.sharpeRatio * 0.15)).toFixed(2)}</span> through 
-                      rebalancing and fee optimization.
-                    </div>
-                  </div>
+                <CardContent className="p-3 pt-0">
+                  <HoldingsTable holdings={holdings} onUpdate={handleHoldingsUpdate} />
                 </CardContent>
               </Card>
-              
-              {/* Monte Carlo Simulation */}
-              <MonteCarloSimulation
-                portfolioValue={analysis.totalValue}
-                expectedReturn={analysis.expectedReturn}
-                volatility={analysis.volatility}
-                currentAge={clientInfo.currentAge}
-              />
-            </div>
-          </TabsContent>
+            )}
 
-          <TabsContent value="notes">
-            <Card>
-              <CardHeader className="pb-3 sm:pb-6">
-                <CardTitle className="text-base sm:text-lg">Meeting Notes</CardTitle>
-              </CardHeader>
-              <CardContent className="p-3 sm:p-6 pt-0">
-                <Textarea
-                  value={notes}
-                  onChange={(e) => setNotes(e.target.value)}
-                  placeholder="Enter client-specific notes here. These will appear at the end of the exported PDF report."
-                  className="min-h-[250px] sm:min-h-[300px] font-mono text-sm"
-                />
-              </CardContent>
-            </Card>
-          </TabsContent>
-        </Tabs>
+            {activeTab === 'charts' && (
+              <div className="space-y-4">
+                <BenchmarkComparisonChart analysis={analysis} initialValue={100000} />
+                <EfficientFrontierChart analysis={analysis} holdings={holdings} />
+                <StressTestChart analysis={analysis} />
+                <AssetAllocationChart holdings={holdings} totalValue={analysis.totalValue} />
+                <MonteCarloSimulation portfolioValue={analysis.totalValue} expectedReturn={analysis.expectedReturn} volatility={analysis.volatility} currentAge={clientInfo.currentAge} />
+              </div>
+            )}
+          </div>
+        )}
       </main>
+
+      {/* Mobile Bottom Navigation */}
+      {isMobile && (
+        <BottomNavigation activeTab={activeTab} onTabChange={handleTabChange} />
+      )}
     </div>
   );
 }

@@ -203,7 +203,7 @@ export function MobileDiagnosticCarousel({
           >
             <button 
               onClick={scrollPrev}
-              className="pointer-events-auto ml-1 p-1.5 rounded-full bg-background/80 backdrop-blur-sm border border-border/50 shadow-sm opacity-60 hover:opacity-100 transition-opacity"
+              className="pointer-events-auto ml-1 p-1.5 rounded-full bg-background/80 backdrop-blur-sm border border-border/50 shadow-sm opacity-70 hover:opacity-100 transition-opacity animate-[pulse_2s_ease-in-out_infinite]"
               aria-label="Previous card"
             >
               <ChevronLeft size={16} className="text-muted-foreground" />
@@ -221,7 +221,7 @@ export function MobileDiagnosticCarousel({
           >
             <button 
               onClick={scrollNext}
-              className="pointer-events-auto mr-1 p-1.5 rounded-full bg-background/80 backdrop-blur-sm border border-border/50 shadow-sm opacity-60 hover:opacity-100 transition-opacity"
+              className="pointer-events-auto mr-1 p-1.5 rounded-full bg-background/80 backdrop-blur-sm border border-border/50 shadow-sm opacity-70 hover:opacity-100 transition-opacity animate-[pulse_2s_ease-in-out_infinite]"
               aria-label="Next card"
             >
               <ChevronRight size={16} className="text-muted-foreground" />

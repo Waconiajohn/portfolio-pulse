@@ -4,6 +4,7 @@ import type { CardContract, CardAction } from "./types";
 import { computeSeverity } from "./severityPolicy";
 import { inferAccountSubtype, type AccountBucket } from "@/domain/accounts/inferAccountSubtype";
 import { CARD_COPY } from "@/domain/content/cardCopy";
+import { formatPct, formatCurrency, sentenceCase } from "@/domain/content/copyHelpers";
 
 // Fallback titles if not found in CARD_COPY
 const TITLE_MAP: Record<CardContract["id"], string> = {
@@ -57,25 +58,26 @@ function defaultActionsFor(id: CardContract["id"]): CardAction[] {
   }
 }
 
+// Consumer-friendly "why this matters" explanations
 const WHY: Partial<Record<CardContract["id"], string>> = {
   riskDiversification:
-    "Diversification reduces single-point failure risk and helps your portfolio survive shocks without forcing bad decisions.",
+    "Spreading your money across different investments helps protect you if one drops sharply.",
   downsideResilience:
-    "Downside resilience matters because drawdowns create the biggest behavioral risk: selling at the bottom.",
+    "Understanding how much you could lose in a bad market helps you avoid panic-selling at the worst time.",
   performanceOptimization:
-    "Performance optimization checks whether results are explained by market exposure or driven by portfolio choices.",
+    "Comparing your returns to the market shows whether your investments are working as hard as they could.",
   costAnalysis:
-    "Fees compound negatively. Reducing expense drag is one of the few reliable ways to improve net returns.",
+    "Investment fees add up over time. Even small reductions can mean thousands more in your pocket.",
   taxEfficiency:
-    "Tax efficiency improves after-tax outcomes, especially in taxable accounts, without changing market risk.",
+    "Keeping more of what you earn by reducing unnecessary taxes is one of the easiest wins in investing.",
   riskAdjusted:
-    "Risk-adjusted metrics evaluate whether returns were earned efficiently given the volatility you experienced.",
+    "This checks if the ups and downs you're experiencing are worth the returns you're getting.",
   planningGaps:
-    "Planning gaps increase the chance that a life event becomes a financial event. Closing them reduces fragility.",
+    "Having basics like an emergency fund and insurance in place protects your investments from life surprises.",
   lifetimeIncomeSecurity:
-    "Income coverage determines whether your plan can fund core expenses through market cycles and longevity.",
+    "Knowing your retirement income is secure lets you enjoy your savings without worry.",
   performanceMetrics:
-    "Metrics like Sharpe and drawdown help you compare strategies on a consistent, risk-aware basis.",
+    "These numbers help you understand your portfolio's behavior in a consistent, comparable way.",
 };
 
 

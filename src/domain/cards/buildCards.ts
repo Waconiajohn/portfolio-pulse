@@ -7,7 +7,7 @@ import { CARD_COPY } from "@/domain/content/cardCopy";
 import { formatPct, formatCurrency, sentenceCase } from "@/domain/content/copyHelpers";
 
 // Fallback titles if not found in CARD_COPY
-const TITLE_MAP: Record<CardContract["id"], string> = {
+const TITLE_MAP: Partial<Record<CardContract["id"], string>> = {
   riskDiversification: "Diversification & Concentration",
   downsideResilience: "Downside Resilience",
   performanceOptimization: "Performance vs Market",
@@ -18,6 +18,7 @@ const TITLE_MAP: Record<CardContract["id"], string> = {
   lifetimeIncomeSecurity: "Lifetime Income Security",
   performanceMetrics: "Performance Metrics",
   summary: "Summary",
+  crossAccountConcentration: "Cross-Account Risk",
 };
 
 const ICON_MAP: Partial<Record<CardContract["id"], string>> = {
@@ -30,6 +31,7 @@ const ICON_MAP: Partial<Record<CardContract["id"], string>> = {
   planningGaps: "ClipboardList",
   lifetimeIncomeSecurity: "Wallet",
   performanceMetrics: "BarChart",
+  crossAccountConcentration: "Layers",
 };
 
 
@@ -53,6 +55,11 @@ function defaultActionsFor(id: CardContract["id"]): CardAction[] {
       return [{ label: "Review income coverage", kind: "LEARN", deepLink: "/income" }];
     case "performanceMetrics":
       return [{ label: "Review performance metrics detail", kind: "BENCHMARK", deepLink: "/dashboard" }];
+    case "crossAccountConcentration":
+      return [
+        { label: "Reduce overlap", kind: "DIVERSIFY", deepLink: "/holdings" },
+        { label: "Balance exposures", kind: "REBALANCE", deepLink: "/holdings" },
+      ];
     default:
       return [{ label: "Learn more", kind: "LEARN" }];
   }
@@ -78,6 +85,8 @@ const WHY: Partial<Record<CardContract["id"], string>> = {
     "Knowing your retirement income is secure lets you enjoy your savings without worry.",
   performanceMetrics:
     "These numbers help you understand your portfolio's behavior in a consistent, comparable way.",
+  crossAccountConcentration:
+    "Hidden overlap increases risk because one company or investment can quietly drive your entire outcome across all accounts.",
 };
 
 /**
@@ -320,6 +329,157 @@ function getAccountContextForDiagnostic(
   return undefined;
 }
 
+/**
+ * Analyze cross-account concentration - identifies hidden overlap across accounts
+ */
+function analyzeCrossAccountConcentration(holdings: Holding[]): {
+  status: "GREEN" | "YELLOW" | "RED";
+  score: number;
+  keyFinding: string;
+  headlineMetric: string;
+  details: Record<string, unknown>;
+  recommendations: Recommendation[];
+} {
+  if (holdings.length === 0) {
+    return {
+      status: "GREEN",
+      score: 100,
+      keyFinding: "No holdings to analyze for cross-account overlap.",
+      headlineMetric: "No data",
+      details: {},
+      recommendations: [],
+    };
+  }
+
+  const totalValue = holdings.reduce((sum, h) => sum + h.shares * h.currentPrice, 0);
+  
+  // Group holdings by ticker across all accounts
+  const tickerMap: Record<string, { 
+    ticker: string; 
+    totalValue: number; 
+    accounts: Set<string>;
+    holdings: Holding[];
+  }> = {};
+
+  holdings.forEach(h => {
+    const value = h.shares * h.currentPrice;
+    const accountKey = h.accountType || "Unknown";
+    
+    if (!tickerMap[h.ticker]) {
+      tickerMap[h.ticker] = {
+        ticker: h.ticker,
+        totalValue: 0,
+        accounts: new Set(),
+        holdings: [],
+      };
+    }
+    tickerMap[h.ticker].totalValue += value;
+    tickerMap[h.ticker].accounts.add(accountKey);
+    tickerMap[h.ticker].holdings.push(h);
+  });
+
+  // Sort by combined value
+  const sortedTickers = Object.values(tickerMap)
+    .map(t => ({
+      ...t,
+      weight: totalValue > 0 ? t.totalValue / totalValue : 0,
+      accountCount: t.accounts.size,
+    }))
+    .sort((a, b) => b.weight - a.weight);
+
+  const topHolding = sortedTickers[0];
+  const topWeight = topHolding?.weight ?? 0;
+  
+  // Find tickers that appear in multiple accounts
+  const multiAccountTickers = sortedTickers.filter(t => t.accountCount > 1);
+  const hasMultiAccountOverlap = multiAccountTickers.length > 0;
+  const topMultiAccount = multiAccountTickers[0];
+
+  // Determine status
+  let status: "GREEN" | "YELLOW" | "RED";
+  let score: number;
+  
+  if (topWeight > 0.15) {
+    status = "RED";
+    score = Math.max(0, 40 - (topWeight - 0.15) * 200);
+  } else if (topWeight > 0.10) {
+    status = "YELLOW";
+    score = 40 + (0.15 - topWeight) * 600;
+  } else {
+    status = "GREEN";
+    score = 70 + (0.10 - topWeight) * 300;
+  }
+  score = Math.min(100, Math.max(0, score));
+
+  // Build keyFinding
+  let keyFinding: string;
+  if (topMultiAccount && topMultiAccount.weight > 0.10) {
+    keyFinding = `Across all accounts, ${topMultiAccount.ticker} totals ${formatPct(topMultiAccount.weight)} of your portfolio (appears in ${topMultiAccount.accountCount} accounts).`;
+  } else if (topWeight > 0.15) {
+    keyFinding = `Your largest holding (${topHolding.ticker}) is ${formatPct(topWeight)} of your total portfolio—that's a lot riding on one investment.`;
+  } else if (hasMultiAccountOverlap) {
+    keyFinding = `${multiAccountTickers.length} investment${multiAccountTickers.length > 1 ? "s appear" : " appears"} in multiple accounts. The largest overlap is ${topMultiAccount?.ticker} at ${formatPct(topMultiAccount?.weight ?? 0)}.`;
+  } else {
+    keyFinding = `No significant cross-account overlap detected. Your accounts are reasonably independent.`;
+  }
+
+  // Build recommendations (use riskDiversification category since it's related)
+  const recommendations: Recommendation[] = [];
+  if (topWeight > 0.10) {
+    recommendations.push({
+      id: "reduce-top-concentration",
+      category: "riskDiversification",
+      title: `Consider reducing ${topHolding.ticker} position`,
+      description: `At ${formatPct(topWeight)}, this single holding has outsized influence on your portfolio.`,
+      priority: 1,
+      impact: "Reduces single-stock risk",
+    });
+  }
+  if (multiAccountTickers.length > 0) {
+    recommendations.push({
+      id: "consolidate-overlapping",
+      category: "riskDiversification",
+      title: "Review overlapping positions",
+      description: `${multiAccountTickers.length} ticker${multiAccountTickers.length > 1 ? "s" : ""} appear${multiAccountTickers.length === 1 ? "s" : ""} in multiple accounts. Consider whether this duplication is intentional.`,
+      priority: 2,
+      impact: "Simplifies portfolio management",
+    });
+  }
+  if (sortedTickers.length > 1 && sortedTickers[0].weight + sortedTickers[1].weight > 0.25) {
+    recommendations.push({
+      id: "diversify-top-2",
+      category: "riskDiversification",
+      title: "Diversify top holdings",
+      description: `Your top 2 holdings make up ${formatPct(sortedTickers[0].weight + sortedTickers[1].weight)} of your portfolio.`,
+      priority: 2,
+      impact: "Reduces concentration risk",
+    });
+  }
+
+  return {
+    status,
+    score,
+    keyFinding,
+    headlineMetric: `Top: ${topHolding?.ticker ?? "N/A"} at ${formatPct(topWeight)} | ${multiAccountTickers.length} overlap${multiAccountTickers.length !== 1 ? "s" : ""}`,
+    details: {
+      topHoldings: sortedTickers.slice(0, 5).map(t => ({
+        ticker: t.ticker,
+        weight: t.weight,
+        accountCount: t.accountCount,
+        accounts: Array.from(t.accounts),
+      })),
+      multiAccountTickers: multiAccountTickers.map(t => ({
+        ticker: t.ticker,
+        weight: t.weight,
+        accountCount: t.accountCount,
+      })),
+      totalValue,
+      holdingCount: holdings.length,
+    },
+    recommendations,
+  };
+}
+
 export function buildCardContracts(analysis: PortfolioAnalysis, holdings: Holding[] = []): CardContract[] {
   const cards: CardContract[] = [];
 
@@ -351,6 +511,33 @@ export function buildCardContracts(analysis: PortfolioAnalysis, holdings: Holdin
       actions: defaultActionsFor(id),
     });
   });
+
+  // Add cross-account concentration card (synthetic - not from analysis engine)
+  if (holdings.length > 0) {
+    const crossAccount = analyzeCrossAccountConcentration(holdings);
+    const copy = CARD_COPY["crossAccountConcentration"];
+    
+    cards.push({
+      id: "crossAccountConcentration",
+      title: copy?.title ?? TITLE_MAP["crossAccountConcentration"] ?? "Cross-Account Risk",
+      subtitle: copy?.subtitle,
+      iconName: ICON_MAP["crossAccountConcentration"],
+      whyItMatters: WHY["crossAccountConcentration"] ?? "Hidden overlap increases risk.",
+      status: crossAccount.status,
+      score: crossAccount.score,
+      keyFinding: crossAccount.keyFinding,
+      headlineMetric: crossAccount.headlineMetric,
+      details: crossAccount.details,
+      severity: computeSeverity({ 
+        id: "crossAccountConcentration", 
+        status: crossAccount.status, 
+        score: crossAccount.score, 
+        details: crossAccount.details 
+      }),
+      recommendations: crossAccount.recommendations,
+      actions: defaultActionsFor("crossAccountConcentration"),
+    });
+  }
 
   return cards;
 }

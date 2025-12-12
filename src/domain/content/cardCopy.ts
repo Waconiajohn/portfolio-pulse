@@ -49,4 +49,8 @@ export const CARD_COPY: Record<string, CardCopy> = {
     title: "Your Portfolio Snapshot",
     subtitle: "Biggest risks first, then quick wins",
   },
+  crossAccountConcentration: {
+    title: "Cross-Account Risk",
+    subtitle: "Hidden overlap across all your accounts",
+  },
 };

@@ -21,6 +21,8 @@ import {
   Wallet,
   FileQuestion,
   Activity,
+  Layers,
+  Percent,
   LucideIcon
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -31,7 +33,8 @@ import { CARD_COPY } from '@/domain/content/cardCopy';
 
 const iconMap: Record<string, LucideIcon> = {
   Shield, ShieldAlert, TrendingUp, DollarSign, Receipt, 
-  PieChart, BarChart3, Umbrella, Settings2, ClipboardCheck, Wallet, FileQuestion, Activity
+  PieChart, BarChart3, Umbrella, Settings2, ClipboardCheck, Wallet, FileQuestion, 
+  Activity, Layers, Percent
 };
 
 interface MobileDiagnosticCarouselProps {

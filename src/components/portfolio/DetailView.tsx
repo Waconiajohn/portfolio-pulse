@@ -1388,111 +1388,117 @@ export function DetailView({
         </Button>
       </CardHeader>
       <CardContent className="space-y-6">
-        {/* Education Summary */}
-        {education && (
-          <div className="p-4 rounded-lg bg-primary/5 border border-primary/20">
-            <div className="flex items-start gap-2">
-              <Info size={16} className="text-primary mt-0.5 shrink-0" />
-              <div className="space-y-1">
-                <div className="text-sm font-medium text-primary">{education.title}</div>
-                <p className="text-xs text-muted-foreground">{education.whatItMeasures}</p>
-                {education.riskToleranceNote && (
-                  <p className="text-xs text-primary/80 mt-1">{education.riskToleranceNote}</p>
-                )}
+        {/* Section 1: Why this matters */}
+        {card?.whyItMatters && (
+          <div className="space-y-2">
+            <h3 className="text-sm font-semibold">Why this matters</h3>
+            <p className="text-sm text-muted-foreground leading-relaxed">{card.whyItMatters}</p>
+            {card.contextLabel && (
+              <div className="mt-2 p-2 rounded-md bg-primary/10 border border-primary/20">
+                <span className="text-sm font-medium text-primary">{card.contextLabel}</span>
+                <span className="text-sm text-muted-foreground ml-1">
+                  — consider focusing improvements here first.
+                </span>
               </div>
+            )}
+          </div>
+        )}
+
+        {/* Section 2: What's driving this */}
+        <div className="space-y-3">
+          <h3 className="text-sm font-semibold">What's driving this</h3>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="p-3 rounded-lg bg-muted/30 border border-border">
+              <div className="text-xs text-muted-foreground mb-1">Key Finding</div>
+              <div className="text-sm font-medium">{result.keyFinding}</div>
+            </div>
+            <div className="p-3 rounded-lg bg-muted/30 border border-border">
+              <div className="text-xs text-muted-foreground mb-1">Primary Metric</div>
+              <div className="font-mono text-sm font-medium">{result.headlineMetric}</div>
+            </div>
+          </div>
+        </div>
+
+        {/* Section 3: Suggested actions */}
+        {card?.actions && card.actions.length > 0 && (
+          <div className="space-y-2">
+            <h3 className="text-sm font-semibold">Suggested actions</h3>
+            <div className="flex flex-wrap gap-2">
+              {card.actions.map((a, idx) => (
+                <Button
+                  key={`${a.kind}-${idx}`}
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    if (a.deepLink) {
+                      navigate(a.deepLink);
+                    }
+                  }}
+                >
+                  {a.label}
+                </Button>
+              ))}
             </div>
           </div>
         )}
 
-        {card && (
-          <Card className="mb-4">
-            <CardHeader className="pb-2">
-              <div className="flex items-center justify-between gap-3">
-                <CardTitle className="text-base">{card.title}</CardTitle>
-                {severityBadge(card.severity)}
-              </div>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div>
-                <div className="text-sm font-medium mb-1">Why it matters</div>
-                <div className="text-sm text-muted-foreground">{card.whyItMatters}</div>
-                {card.contextLabel && (
-                  <div className="mt-2 p-2 rounded-md bg-primary/10 border border-primary/20">
-                    <span className="text-sm font-medium text-primary">{card.contextLabel}</span>
-                    <span className="text-sm text-muted-foreground ml-1">
-                      — consider focusing improvements here first.
-                    </span>
+        {/* Recommendations */}
+        {card?.recommendations && card.recommendations.length > 0 && (
+          <div className="space-y-2">
+            <h3 className="text-sm font-semibold">Recommendations</h3>
+            <div className="space-y-2">
+              {card.recommendations
+                .slice()
+                .sort((x, y) => (x.priority ?? 99) - (y.priority ?? 99))
+                .map((r) => (
+                  <div key={r.id} className="rounded-md border p-3">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <div className="text-sm font-medium">{r.title}</div>
+                        {r.description && (
+                          <div className="mt-1 text-sm text-muted-foreground">{r.description}</div>
+                        )}
+                        {r.impact && (
+                          <div className="mt-1 text-xs text-muted-foreground">Impact: {r.impact}</div>
+                        )}
+                      </div>
+                      {typeof r.priority === "number" && (
+                        <Badge variant="outline" className="shrink-0">
+                          Priority {r.priority}
+                        </Badge>
+                      )}
+                    </div>
                   </div>
-                )}
-              </div>
-
-              {card.actions?.length > 0 && (
-                <div>
-                  <div className="text-sm font-medium mb-2">Suggested actions</div>
-                  <div className="flex flex-wrap gap-2">
-                    {card.actions.map((a, idx) => (
-                      <Button
-                        key={`${a.kind}-${idx}`}
-                        variant="outline"
-                        size="sm"
-                        onClick={() => {
-                          if (a.deepLink) {
-                            navigate(a.deepLink);
-                          }
-                        }}
-                      >
-                        {a.label}
-                      </Button>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {card.recommendations?.length > 0 && (
-                <div>
-                  <div className="text-sm font-medium mb-2">Recommendations</div>
-                  <ol className="space-y-2">
-                    {card.recommendations
-                      .slice()
-                      .sort((x, y) => (x.priority ?? 99) - (y.priority ?? 99))
-                      .map((r) => (
-                        <li key={r.id} className="rounded-md border p-3">
-                          <div className="flex items-start justify-between gap-3">
-                            <div className="min-w-0">
-                              <div className="text-sm font-medium">{r.title}</div>
-                              {r.description && (
-                                <div className="mt-1 text-sm text-muted-foreground">{r.description}</div>
-                              )}
-                              {r.impact && (
-                                <div className="mt-1 text-xs text-muted-foreground">Impact: {r.impact}</div>
-                              )}
-                            </div>
-                            {typeof r.priority === "number" && (
-                              <Badge variant="outline" className="shrink-0">
-                                Priority {r.priority}
-                              </Badge>
-                            )}
-                          </div>
-                        </li>
-                      ))}
-                  </ol>
-                </div>
-              )}
-            </CardContent>
-          </Card>
+                ))}
+            </div>
+          </div>
         )}
 
-        <div className="grid grid-cols-2 gap-4">
-          <div className="p-4 rounded-lg bg-muted/30 border border-border">
-            <div className="text-sm text-muted-foreground mb-1">Key Finding</div>
-            <div className="font-medium">{result.keyFinding}</div>
-          </div>
-          <div className="p-4 rounded-lg bg-muted/30 border border-border">
-            <div className="text-sm text-muted-foreground mb-1">Primary Metric</div>
-            <div className="font-mono font-medium">{result.headlineMetric}</div>
-          </div>
-        </div>
+        {/* Section 4: Learn more (collapsible) */}
+        {education && (
+          <Collapsible>
+            <CollapsibleTrigger className="flex items-center gap-2 text-sm font-semibold hover:text-primary transition-colors">
+              <ChevronDown className="h-4 w-4" />
+              Learn more
+            </CollapsibleTrigger>
+            <CollapsibleContent className="pt-3">
+              <div className="p-4 rounded-lg bg-primary/5 border border-primary/20">
+                <div className="flex items-start gap-2">
+                  <Info size={16} className="text-primary mt-0.5 shrink-0" />
+                  <div className="space-y-2">
+                    <div className="text-sm font-medium text-primary">{education.title}</div>
+                    <p className="text-xs text-muted-foreground">{education.whatItMeasures}</p>
+                    {education.riskToleranceNote && (
+                      <p className="text-xs text-primary/80">{education.riskToleranceNote}</p>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </CollapsibleContent>
+          </Collapsible>
+        )}
 
+        {/* Detailed visualizations */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {renderIncomeSecurityCallout()}
           {renderLifetimeIncomeInputsEditor()}

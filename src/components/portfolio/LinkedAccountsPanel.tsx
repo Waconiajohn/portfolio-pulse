@@ -358,8 +358,9 @@ export function LinkedAccountsPanel({ onRefresh, onHoldingsSync, compact = false
           </div>
         </div>
         {mode === 'consumer' && (
-          <p className="text-sm text-muted-foreground mt-1">
-            Your accounts are securely connected. We never store your credentials.
+          <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1.5">
+            <span className="inline-block w-1.5 h-1.5 rounded-full bg-green-500" />
+            Securely connected via Plaid. Your credentials are never stored.
           </p>
         )}
       </CardHeader>
@@ -453,13 +454,12 @@ export function LinkedAccountsPanel({ onRefresh, onHoldingsSync, compact = false
           </>
         )}
 
-        {mode === 'consumer' && displayAccounts.length > 0 && !usingSampleData && (
-          <div className="mt-4 p-3 rounded-lg bg-blue-500/10 border border-blue-500/20">
-            <p className="text-xs text-blue-600 dark:text-blue-400">
-              💡 <strong>Tip:</strong> Link all your investment accounts to get a complete picture of your portfolio health.
-            </p>
-          </div>
-        )}
+        {/* Trust language */}
+        <div className="mt-3 pt-3 border-t border-border/50">
+          <p className="text-[10px] text-muted-foreground text-center">
+            🔒 Data encrypted in transit and at rest. Read-only access only.
+          </p>
+        </div>
       </CardContent>
     </Card>
   );

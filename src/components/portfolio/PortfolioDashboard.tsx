@@ -1,4 +1,5 @@
 import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
+import { AnimatePresence } from 'framer-motion';
 import { Holding, ClientInfo, PlanningChecklist, PortfolioAnalysis, LifetimeIncomeInputs } from '@/types/portfolio';
 import { analyzePortfolio } from '@/lib/analysis-engine';
 import { DIAGNOSTIC_CATEGORIES } from '@/lib/constants';
@@ -737,9 +738,10 @@ export function PortfolioDashboard() {
         {isMobile && (
           <div className="space-y-4">
             {activeTab === 'dashboard' && (
-              <>
+              <AnimatePresence mode="wait">
                 {selectedCategory ? (
                   <DetailView
+                    key="detail-view"
                     name={DIAGNOSTIC_CATEGORIES[selectedCategory as keyof typeof DIAGNOSTIC_CATEGORIES].name}
                     categoryKey={selectedCategory}
                     result={analysis.diagnostics[selectedCategory as keyof typeof analysis.diagnostics]}
@@ -755,7 +757,7 @@ export function PortfolioDashboard() {
                     card={selectedCard}
                   />
                 ) : (
-                  <div className="space-y-4">
+                  <div key="carousel-view" className="space-y-4 animate-fade-in">
                     {/* Linked Accounts first on mobile */}
                     {isConsumer && <LinkedAccountsPanel onHoldingsSync={() => {}} compact sampleAccounts={sampleAccounts} />}
                     
@@ -804,7 +806,7 @@ export function PortfolioDashboard() {
                     </div>
                   </div>
                 )}
-              </>
+              </AnimatePresence>
             )}
 
             {activeTab === 'holdings' && (

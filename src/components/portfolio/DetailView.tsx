@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { motion, useMotionValue, useTransform, PanInfo } from 'framer-motion';
 import { DiagnosticResult, RiskTolerance, PlanningChecklist, GuaranteedIncomeSource, LifetimeIncomeInputs, GuaranteedIncomeSourceType } from '@/types/portfolio';
 import type { CardContract } from '@/domain/cards/types';
 import { PerformanceMetrics, MetricStatus, METRIC_EDUCATION } from '@/types/performance-metrics';
@@ -10,7 +11,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import { X, Check, AlertCircle, Info, TrendingUp, TrendingDown, Minus, ChevronDown, Plus, Trash2, DollarSign, Activity } from 'lucide-react';
+import { X, Check, AlertCircle, Info, TrendingUp, TrendingDown, Minus, ChevronDown, Plus, Trash2, DollarSign, Activity, ChevronLeft } from 'lucide-react';
 import { Checkbox } from '@/components/ui/checkbox';
 import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, AreaChart, Area, ReferenceLine, Legend } from 'recharts';
 import { ScoringConfig, DEFAULT_SCORING_CONFIG, getEducationContent } from '@/lib/scoring-config';
@@ -1376,18 +1377,51 @@ export function DetailView({
     );
   };
 
+  // Swipe gesture handling
+  const x = useMotionValue(0);
+  const opacity = useTransform(x, [0, 100, 200], [1, 0.8, 0.5]);
+  const scale = useTransform(x, [0, 100, 200], [1, 0.98, 0.95]);
+
+  const handleDragEnd = (_: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) => {
+    // If swiped right more than 100px or with enough velocity, close the view
+    if (info.offset.x > 100 || info.velocity.x > 500) {
+      onClose();
+    }
+  };
+
   return (
-    <Card className="animate-slide-up">
-      <CardHeader className="flex flex-row items-center justify-between">
-        <div className="flex items-center gap-3">
-          <CardTitle>{name}</CardTitle>
-          <StatusBadge status={result.status} showLabel />
-        </div>
-        <Button variant="ghost" size="icon" onClick={onClose}>
-          <X size={18} />
-        </Button>
-      </CardHeader>
-      <CardContent className="space-y-6">
+    <motion.div
+      initial={{ x: '100%', opacity: 0 }}
+      animate={{ x: 0, opacity: 1 }}
+      exit={{ x: '100%', opacity: 0 }}
+      transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+      style={{ x, opacity, scale }}
+      drag="x"
+      dragConstraints={{ left: 0, right: 0 }}
+      dragElastic={{ left: 0, right: 0.5 }}
+      onDragEnd={handleDragEnd}
+      className="touch-pan-y"
+    >
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between">
+          <div className="flex items-center gap-3">
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              onClick={onClose}
+              className="md:hidden -ml-2 mr-1 gap-1 text-muted-foreground hover:text-foreground"
+            >
+              <ChevronLeft size={18} />
+              <span className="text-xs">Back</span>
+            </Button>
+            <CardTitle className="text-base md:text-lg">{name}</CardTitle>
+            <StatusBadge status={result.status} showLabel />
+          </div>
+          <Button variant="ghost" size="icon" onClick={onClose} className="hidden md:flex">
+            <X size={18} />
+          </Button>
+        </CardHeader>
+        <CardContent className="space-y-6">
         {/* Section 1: Why this matters */}
         {card?.whyItMatters && (
           <div className="space-y-2">
@@ -1516,5 +1550,6 @@ export function DetailView({
         </div>
       </CardContent>
     </Card>
+    </motion.div>
   );
 }

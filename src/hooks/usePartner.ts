@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './useAuth';
 import { toast } from 'sonner';
+import { Holding, AccountType, AssetClass } from '@/types/portfolio';
 
 type ViewMode = 'individual' | 'partner' | 'household';
 type RelationshipType = 'spouse' | 'partner' | 'financial-partner';
@@ -26,9 +27,35 @@ export interface PartnerInvitation {
   createdAt: string;
 }
 
+interface DbHolding {
+  id: string;
+  user_id: string;
+  ticker: string;
+  name: string | null;
+  shares: number;
+  current_price: number;
+  cost_basis: number | null;
+  account_type: string | null;
+  asset_class: string | null;
+  expense_ratio: number | null;
+}
+
+const transformHolding = (dbHolding: DbHolding): Holding => ({
+  id: dbHolding.id,
+  ticker: dbHolding.ticker,
+  name: dbHolding.name || dbHolding.ticker,
+  shares: dbHolding.shares,
+  currentPrice: dbHolding.current_price,
+  costBasis: dbHolding.cost_basis || dbHolding.current_price,
+  accountType: (dbHolding.account_type as AccountType) || 'Taxable',
+  assetClass: (dbHolding.asset_class as AssetClass) || 'US Stocks',
+  expenseRatio: dbHolding.expense_ratio || undefined,
+});
+
 export function usePartner() {
   const { user } = useAuth();
   const [partner, setPartner] = useState<Partner | null>(null);
+  const [partnerHoldings, setPartnerHoldings] = useState<Holding[]>([]);
   const [pendingInvitations, setPendingInvitations] = useState<PartnerInvitation[]>([]);
   const [sentInvitations, setSentInvitations] = useState<PartnerInvitation[]>([]);
   const [currentView, setCurrentView] = useState<ViewMode>('individual');
@@ -292,8 +319,44 @@ export function usePartner() {
     }
   };
 
+  // Fetch partner holdings (for household view)
+  const fetchPartnerHoldings = useCallback(async () => {
+    if (!partner?.id) {
+      setPartnerHoldings([]);
+      return;
+    }
+
+    try {
+      // Note: This requires RLS policy to allow viewing partner's holdings
+      // For now, we'll create an edge function or use a service role for this
+      const { data, error } = await supabase
+        .from('holdings')
+        .select('*')
+        .eq('user_id', partner.id);
+
+      if (error) {
+        console.error('Error fetching partner holdings:', error);
+        setPartnerHoldings([]);
+        return;
+      }
+
+      setPartnerHoldings((data || []).map(transformHolding));
+    } catch (error) {
+      console.error('Error fetching partner holdings:', error);
+      setPartnerHoldings([]);
+    }
+  }, [partner?.id]);
+
+  // Fetch partner holdings when partner changes or view mode changes to household
+  useEffect(() => {
+    if (partner && currentView === 'household') {
+      fetchPartnerHoldings();
+    }
+  }, [partner, currentView, fetchPartnerHoldings]);
+
   return {
     partner,
+    partnerHoldings,
     pendingInvitations,
     sentInvitations,
     currentView,
@@ -305,5 +368,6 @@ export function usePartner() {
     cancelInvitation,
     removePartner,
     refetch: fetchPartnerData,
+    fetchPartnerHoldings,
   };
 }

@@ -19,6 +19,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useProfile } from '@/hooks/useProfile';
 import { useHoldings } from '@/hooks/useHoldings';
 import { useIncomeSources } from '@/hooks/useIncomeSources';
+import { usePartner } from '@/hooks/usePartner';
 import { useIsMobile } from '@/hooks/use-mobile';
 
 // Components
@@ -95,11 +96,21 @@ export function PortfolioDashboard() {
   const { profile, loading: profileLoading, updateProfile, currentAge } = useProfile();
   const { holdings: dbHoldings, loading: holdingsLoading, bulkUpsertHoldings } = useHoldings();
   const { incomeSources, loading: incomeLoading, setIncomeSources: setDbIncomeSources } = useIncomeSources();
+  const { partner, partnerHoldings, currentView: partnerView } = usePartner();
   
   // Local state for holdings (supports both authenticated and unauthenticated use)
   const [localHoldings, setLocalHoldings] = useState<Holding[]>([]);
   const [sampleAccounts, setSampleAccounts] = useState<SampleAccount[]>([]);
-  const holdings = user ? (dbHoldings.length > 0 ? dbHoldings : localHoldings) : localHoldings;
+  
+  // Combine holdings based on partner view mode
+  const userHoldings = user ? (dbHoldings.length > 0 ? dbHoldings : localHoldings) : localHoldings;
+  const holdings = useMemo(() => {
+    if (partnerView === 'household' && partner && partnerHoldings.length > 0) {
+      // Combine user and partner holdings for household view
+      return [...userHoldings, ...partnerHoldings];
+    }
+    return userHoldings;
+  }, [userHoldings, partnerHoldings, partnerView, partner]);
   
   const [clientInfo, setClientInfo] = useState<ClientInfo>(initialClientInfo);
   const [checklist, setChecklist] = useState<PlanningChecklist>(initialChecklist);
@@ -590,6 +601,8 @@ export function PortfolioDashboard() {
                         totalValue={snapshotData.totalValue}
                         accountCount={snapshotData.accountCount}
                         issuesCount={snapshotData.issuesCount}
+                        isHouseholdView={partnerView === 'household' && !!partner}
+                        partnerName={partner?.name}
                       />
                       
                       {/* Insights Feed - Key Takeaways */}
@@ -725,6 +738,8 @@ export function PortfolioDashboard() {
                       totalValue={snapshotData.totalValue}
                       accountCount={snapshotData.accountCount}
                       issuesCount={snapshotData.issuesCount}
+                      isHouseholdView={partnerView === 'household' && !!partner}
+                      partnerName={partner?.name}
                     />
                     
                     {/* Insights Feed - Key Takeaways */}

@@ -4,7 +4,7 @@ import { ScoringConfig, AdviceModel } from '@/lib/scoring-config';
 import { MetricCard } from './MetricCard';
 import { SettingsPanel } from './SettingsPanel';
 import { ModeToggle } from './ModeToggle';
-import { PartnerAccountSwitcher } from './partner';
+import { PartnerAccountSwitcher, PartnerInvitationNotifications } from './partner';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { FileDown, ChevronDown, Database, LogIn, LogOut, User } from 'lucide-react';
@@ -116,6 +116,8 @@ export function Header({
             />
           </div>
           <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
+            {/* Partner Invitation Notifications */}
+            {user && <PartnerInvitationNotifications />}
             {user ? (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>

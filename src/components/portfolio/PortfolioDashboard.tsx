@@ -117,6 +117,7 @@ export function PortfolioDashboard() {
   const [lifetimeIncomeInputs, setLifetimeIncomeInputs] = useState<LifetimeIncomeInputs>(initialLifetimeIncomeInputs);
   const [notes, setNotes] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const [lastViewedCategory, setLastViewedCategory] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState('dashboard');
   const [assumptions, setAssumptions] = useState<PortfolioAssumptions>(() => loadAssumptions());
   const [baseScoringConfig, setBaseScoringConfig] = useState<ScoringConfig>(() => loadScoringConfig());
@@ -763,7 +764,11 @@ export function PortfolioDashboard() {
                       analysis={analysis}
                       scoringConfig={scoringConfig}
                       riskTolerance={clientInfo.riskTolerance}
-                      onViewDetails={(key) => setSelectedCategory(key)}
+                      onViewDetails={(key) => {
+                        setLastViewedCategory(key);
+                        setSelectedCategory(key);
+                      }}
+                      lastViewedCategory={lastViewedCategory}
                     />
                     
                     {/* Portfolio Snapshot - Summary after cards */}

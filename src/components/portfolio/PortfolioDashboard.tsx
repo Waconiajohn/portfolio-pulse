@@ -11,7 +11,7 @@ import {
   AdviceModel,
   applyRiskToleranceAdjustments 
 } from '@/lib/scoring-config';
-import { SAMPLE_HOLDINGS } from '@/lib/sample-data';
+import { SAMPLE_HOLDINGS, PARTNER_SAMPLE_HOLDINGS, SAMPLE_PARTNER } from '@/lib/sample-data';
 import { computeCorrelationMatrix, generateSimulatedReturns, analyzeCorrelationIssues, CorrelationMatrixResult } from '@/lib/correlation';
 import { calculateAllPerformanceMetrics } from '@/lib/performance-metrics';
 import { useAppMode } from '@/contexts/AppModeContext';
@@ -96,7 +96,7 @@ export function PortfolioDashboard() {
   const { profile, loading: profileLoading, updateProfile, currentAge } = useProfile();
   const { holdings: dbHoldings, loading: holdingsLoading, bulkUpsertHoldings } = useHoldings();
   const { incomeSources, loading: incomeLoading, setIncomeSources: setDbIncomeSources } = useIncomeSources();
-  const { partner, partnerHoldings, currentView: partnerView } = usePartner();
+  const { partner, partnerHoldings, currentView: partnerView, setSamplePartner } = usePartner();
   
   // Local state for holdings (supports both authenticated and unauthenticated use)
   const [localHoldings, setLocalHoldings] = useState<Holding[]>([]);
@@ -275,6 +275,11 @@ export function PortfolioDashboard() {
     const tradIraHoldings = SAMPLE_HOLDINGS.filter(h => h.id.startsWith('ira-'));
     const rothIraHoldings = SAMPLE_HOLDINGS.filter(h => h.id.startsWith('roth-'));
     
+    // Partner accounts
+    const partner401kHoldings = PARTNER_SAMPLE_HOLDINGS.filter(h => h.id.startsWith('p-401k-'));
+    const partnerRothHoldings = PARTNER_SAMPLE_HOLDINGS.filter(h => h.id.startsWith('p-roth-'));
+    const partnerBrokerageHoldings = PARTNER_SAMPLE_HOLDINGS.filter(h => h.id.startsWith('p-br-'));
+    
     const calcTotal = (holdings: typeof SAMPLE_HOLDINGS) => 
       holdings.reduce((sum, h) => sum + h.shares * h.currentPrice, 0);
     
@@ -303,7 +308,35 @@ export function PortfolioDashboard() {
         account_mask: '1056',
         total_value: calcTotal(rothIraHoldings),
       },
+      // Partner accounts
+      {
+        id: 'sample-partner-401k',
+        institution_name: 'Fidelity',
+        account_name: "Sarah's 401(k)",
+        account_type: 'Tax-Advantaged',
+        account_mask: '8834',
+        total_value: calcTotal(partner401kHoldings),
+      },
+      {
+        id: 'sample-partner-roth',
+        institution_name: 'Vanguard',
+        account_name: "Sarah's Roth IRA",
+        account_type: 'Tax-Advantaged',
+        account_mask: '2291',
+        total_value: calcTotal(partnerRothHoldings),
+      },
+      {
+        id: 'sample-partner-brokerage',
+        institution_name: 'Fidelity',
+        account_name: "Sarah's Brokerage",
+        account_type: 'Taxable',
+        account_mask: '5567',
+        total_value: calcTotal(partnerBrokerageHoldings),
+      },
     ]);
+    
+    // Set sample partner
+    setSamplePartner(SAMPLE_PARTNER, PARTNER_SAMPLE_HOLDINGS);
     
     setClientInfo({
       name: 'John & Sarah Smith',

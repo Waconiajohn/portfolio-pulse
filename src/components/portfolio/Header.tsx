@@ -1,9 +1,11 @@
+import { useState } from 'react';
 import { ClientInfo, PortfolioAnalysis, Holding } from '@/types/portfolio';
 import { PortfolioAssumptions } from '@/lib/assumptions';
 import { ScoringConfig, AdviceModel } from '@/lib/scoring-config';
 import { MetricCard } from './MetricCard';
 import { SettingsPanel } from './SettingsPanel';
 import { ModeToggle } from './ModeToggle';
+import { PartnerAccountSwitcher } from './partner';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { FileDown, ChevronDown, Database, LogIn, LogOut, User } from 'lucide-react';
@@ -12,6 +14,8 @@ import { toast } from 'sonner';
 import { useAppMode } from '@/contexts/AppModeContext';
 import { useAuth } from '@/hooks/useAuth';
 import { useNavigate } from 'react-router-dom';
+
+type ViewMode = 'individual' | 'partner' | 'household';
 
 interface HeaderProps {
   clientInfo: ClientInfo;
@@ -89,6 +93,10 @@ export function Header({
     });
   };
 
+  // Partner state - in a real app, this would come from a hook/context
+  const [currentView, setCurrentView] = useState<ViewMode>('individual');
+  const mockPartner = null; // Set to a Partner object when connected
+
   return (
     <header className="border-b border-border bg-card/50 backdrop-blur-sm sticky top-0 z-10">
       <div className="container mx-auto px-3 sm:px-4 py-3 sm:py-4">
@@ -101,6 +109,14 @@ export function Header({
                 {isAdvisor ? 'Professional Advisory Analysis' : 'Personal Portfolio Analysis'}
               </p>
             </div>
+            {/* Partner Account Switcher */}
+            <PartnerAccountSwitcher
+              currentUser={{ name: user?.email?.split('@')[0] || 'You' }}
+              partner={mockPartner}
+              currentView={currentView}
+              onViewChange={setCurrentView}
+              className="ml-2"
+            />
           </div>
           <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
             {user ? (

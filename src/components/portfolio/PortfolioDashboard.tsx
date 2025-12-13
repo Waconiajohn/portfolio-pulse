@@ -36,6 +36,7 @@ import { DetailView } from './DetailView';
 import { PortfolioSnapshot } from './PortfolioSnapshot';
 import { InsightsFeed } from '@/components/insights/InsightsFeed';
 import { TacticalEducationPanel } from './TacticalEducationPanel';
+import { EducationHub } from '@/components/education';
 
 import { EfficientFrontierChart } from './EfficientFrontierChart';
 import { StressTestChart } from './StressTestChart';
@@ -54,7 +55,7 @@ import { ActionPlanPanel, ActionPlanPanelRef } from '@/components/portfolio/Acti
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Textarea } from '@/components/ui/textarea';
-import { LayoutGrid, Table, FileText, LineChart, Menu, ListTodo } from 'lucide-react';
+import { LayoutGrid, Table, FileText, LineChart, Menu, ListTodo, GraduationCap } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
@@ -485,6 +486,10 @@ export function PortfolioDashboard() {
                   <LineChart size={16} />
                   Analytics
                 </TabsTrigger>
+                <TabsTrigger value="learn" className="gap-2">
+                  <GraduationCap size={16} />
+                  Learn
+                </TabsTrigger>
                 <TabsTrigger value="notes" className="gap-2">
                   <FileText size={16} />
                   Notes
@@ -657,6 +662,10 @@ export function PortfolioDashboard() {
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
                 <MonteCarloSimulation portfolioValue={analysis.totalValue} expectedReturn={analysis.expectedReturn} volatility={analysis.volatility} currentAge={clientInfo.currentAge} />
               </div>
+            </TabsContent>
+
+            <TabsContent value="learn" className="space-y-4 sm:space-y-6">
+              <EducationHub />
             </TabsContent>
 
             <TabsContent value="notes">

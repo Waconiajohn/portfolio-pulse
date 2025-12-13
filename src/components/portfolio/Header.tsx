@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import { ClientInfo, PortfolioAnalysis, Holding } from '@/types/portfolio';
 import { PortfolioAssumptions } from '@/lib/assumptions';
 import { ScoringConfig, AdviceModel } from '@/lib/scoring-config';
@@ -13,9 +12,8 @@ import { generatePDF } from '@/lib/pdf-export';
 import { toast } from 'sonner';
 import { useAppMode } from '@/contexts/AppModeContext';
 import { useAuth } from '@/hooks/useAuth';
+import { usePartner } from '@/hooks/usePartner';
 import { useNavigate } from 'react-router-dom';
-
-type ViewMode = 'individual' | 'partner' | 'household';
 
 interface HeaderProps {
   clientInfo: ClientInfo;
@@ -93,9 +91,8 @@ export function Header({
     });
   };
 
-  // Partner state - in a real app, this would come from a hook/context
-  const [currentView, setCurrentView] = useState<ViewMode>('individual');
-  const mockPartner = null; // Set to a Partner object when connected
+  // Use real partner hook
+  const { partner, currentView, setCurrentView } = usePartner();
 
   return (
     <header className="border-b border-border bg-card/50 backdrop-blur-sm sticky top-0 z-10">
@@ -112,7 +109,7 @@ export function Header({
             {/* Partner Account Switcher */}
             <PartnerAccountSwitcher
               currentUser={{ name: user?.email?.split('@')[0] || 'You' }}
-              partner={mockPartner}
+              partner={partner}
               currentView={currentView}
               onViewChange={setCurrentView}
               className="ml-2"

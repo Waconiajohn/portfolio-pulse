@@ -14,7 +14,7 @@ import {
 } from '@/components/ui/dialog';
 import { Heart, Users, UserPlus, Mail, ArrowRight, CheckCircle2, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { toast } from 'sonner';
+import { usePartner } from '@/hooks/usePartner';
 
 type RelationshipType = 'spouse' | 'partner' | 'financial-partner';
 
@@ -50,34 +50,33 @@ export function PartnerInvite({ onInviteSent, trigger }: PartnerInviteProps) {
   const [relationshipType, setRelationshipType] = useState<RelationshipType>('spouse');
   const [isLoading, setIsLoading] = useState(false);
   const [success, setSuccess] = useState(false);
+  
+  const { sendInvitation } = usePartner();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     if (!email || !email.includes('@')) {
-      toast.error('Please enter a valid email address');
       return;
     }
 
     setIsLoading(true);
 
     try {
-      // TODO: Implement actual invitation logic via Supabase
-      await new Promise(resolve => setTimeout(resolve, 1500)); // Simulate API call
+      const { error } = await sendInvitation(email, relationshipType);
       
-      onInviteSent?.(email, relationshipType);
-      setSuccess(true);
-      toast.success('Invitation sent successfully!');
-      
-      // Reset and close after showing success
-      setTimeout(() => {
-        setOpen(false);
-        setSuccess(false);
-        setEmail('');
-        setRelationshipType('spouse');
-      }, 2000);
-    } catch (error) {
-      toast.error('Failed to send invitation. Please try again.');
+      if (!error) {
+        onInviteSent?.(email, relationshipType);
+        setSuccess(true);
+        
+        // Reset and close after showing success
+        setTimeout(() => {
+          setOpen(false);
+          setSuccess(false);
+          setEmail('');
+          setRelationshipType('spouse');
+        }, 2000);
+      }
     } finally {
       setIsLoading(false);
     }

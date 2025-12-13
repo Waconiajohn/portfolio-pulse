@@ -42,6 +42,7 @@ interface MobileDiagnosticCarouselProps {
   scoringConfig: ScoringConfig;
   riskTolerance: RiskTolerance;
   onViewDetails: (categoryKey: string) => void;
+  lastViewedCategory?: string | null;
 }
 
 interface CarouselCardProps {
@@ -156,7 +157,8 @@ export function MobileDiagnosticCarousel({
   analysis,
   scoringConfig,
   riskTolerance,
-  onViewDetails
+  onViewDetails,
+  lastViewedCategory
 }: MobileDiagnosticCarouselProps) {
   const [emblaRef, emblaApi] = useEmblaCarousel({ 
     align: 'start',
@@ -211,6 +213,16 @@ export function MobileDiagnosticCarousel({
       emblaApi.off('select', onSelect);
     };
   }, [emblaApi, onSelect]);
+
+  // Scroll to the last viewed category when returning from detail view
+  useEffect(() => {
+    if (!emblaApi || !lastViewedCategory) return;
+    const targetIndex = diagnosticEntries.findIndex(([key]) => key === lastViewedCategory);
+    if (targetIndex >= 0 && targetIndex !== selectedIndex) {
+      emblaApi.scrollTo(targetIndex, false); // instant scroll, no animation
+      setSelectedIndex(targetIndex);
+    }
+  }, [emblaApi, lastViewedCategory, diagnosticEntries]);
 
   const scrollTo = useCallback((index: number) => {
     if (emblaApi) emblaApi.scrollTo(index);

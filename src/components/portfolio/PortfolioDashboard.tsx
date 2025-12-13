@@ -769,21 +769,6 @@ export function PortfolioDashboard() {
         )}
       </main>
 
-      {/* Mobile Action Plan FAB */}
-      {isMobile && activeTab === 'dashboard' && !selectedCategory && actionPlan.length > 0 && (
-        <Button
-          onClick={scrollToActionPlan}
-          className="fixed right-4 z-40 rounded-full h-12 px-4 shadow-lg"
-          style={{ bottom: 'calc(5rem + env(safe-area-inset-bottom, 0px))' }}
-          size="sm"
-        >
-          <ListTodo className="h-4 w-4 mr-2" />
-          Plan
-          <Badge variant="secondary" className="ml-2 h-5 px-1.5 text-[10px]">
-            {actionPlan.length}
-          </Badge>
-        </Button>
-      )}
 
       {/* Mobile Bottom Navigation */}
       {isMobile && (

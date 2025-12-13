@@ -9,9 +9,10 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { User, Users, UserPlus, ChevronDown, Check } from 'lucide-react';
+import { User, Users, UserPlus, ChevronDown, Check, Settings } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { PartnerInvite } from './PartnerInvite';
+import { PartnerSettingsPanel } from './PartnerSettingsPanel';
 
 type ViewMode = 'individual' | 'partner' | 'household';
 
@@ -170,6 +171,20 @@ export function PartnerAccountSwitcher({
             <span className="text-muted-foreground">Household Health</span>
             <span className="font-medium text-status-good">85/100</span>
           </div>
+        </div>
+
+        <DropdownMenuSeparator />
+        
+        {/* Partner Settings */}
+        <div className="p-2">
+          <PartnerSettingsPanel
+            trigger={
+              <Button variant="ghost" size="sm" className="w-full justify-start gap-2 text-muted-foreground hover:text-foreground">
+                <Settings className="h-4 w-4" />
+                Partner Settings
+              </Button>
+            }
+          />
         </div>
       </DropdownMenuContent>
     </DropdownMenu>

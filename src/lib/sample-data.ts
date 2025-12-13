@@ -58,10 +58,56 @@ export const SAMPLE_HOLDINGS: Holding[] = [
 ];
 
 /**
+ * Partner sample holdings - represents a partner's portfolio for household view testing
+ * Partner "Sarah" has a more conservative allocation
+ */
+export const PARTNER_SAMPLE_HOLDINGS: Holding[] = [
+  // ---------------------------------------------------------------------------
+  // [Partner 401k] Tax-Advantaged account (balanced allocation)
+  // ---------------------------------------------------------------------------
+  { id: "p-401k-001", ticker: "FXAIX", name: "[Partner 401k] Fidelity 500 Index Fund", shares: 350, currentPrice: 185.20, costBasis: 160.00, accountType: "Tax-Advantaged", assetClass: "US Stocks", expenseRatio: 0.00015 },
+  { id: "p-401k-002", ticker: "FXNAX", name: "[Partner 401k] Fidelity U.S. Bond Index Fund", shares: 800, currentPrice: 10.85, costBasis: 11.20, accountType: "Tax-Advantaged", assetClass: "Bonds", expenseRatio: 0.00025 },
+  { id: "p-401k-003", ticker: "FSPSX", name: "[Partner 401k] Fidelity International Index Fund", shares: 450, currentPrice: 44.30, costBasis: 46.00, accountType: "Tax-Advantaged", assetClass: "Intl Stocks", expenseRatio: 0.00035 },
+  { id: "p-401k-004", ticker: "FSMDX", name: "[Partner 401k] Fidelity Mid Cap Index Fund", shares: 280, currentPrice: 32.80, costBasis: 30.00, accountType: "Tax-Advantaged", assetClass: "US Stocks", expenseRatio: 0.00025 },
+
+  // ---------------------------------------------------------------------------
+  // [Partner Roth IRA] Tax-Advantaged (growth oriented)
+  // ---------------------------------------------------------------------------
+  { id: "p-roth-001", ticker: "VUG",  name: "[Partner Roth] Vanguard Growth ETF", shares: 95, currentPrice: 352.40, costBasis: 310.00, accountType: "Tax-Advantaged", assetClass: "US Stocks", expenseRatio: 0.0004 },
+  { id: "p-roth-002", ticker: "ARKK", name: "[Partner Roth] ARK Innovation ETF (higher risk)", shares: 75, currentPrice: 48.20, costBasis: 85.00, accountType: "Tax-Advantaged", assetClass: "US Stocks", expenseRatio: 0.0075 },
+  { id: "p-roth-003", ticker: "VB",   name: "[Partner Roth] Vanguard Small-Cap ETF", shares: 110, currentPrice: 215.80, costBasis: 195.00, accountType: "Tax-Advantaged", assetClass: "US Stocks", expenseRatio: 0.0005 },
+
+  // ---------------------------------------------------------------------------
+  // [Partner Brokerage] Taxable account (conservative with some individual stocks)
+  // ---------------------------------------------------------------------------
+  { id: "p-br-001", ticker: "SCHB", name: "[Partner Brokerage] Schwab U.S. Broad Market ETF", shares: 280, currentPrice: 58.90, costBasis: 52.00, accountType: "Taxable", assetClass: "US Stocks", expenseRatio: 0.0003 },
+  { id: "p-br-002", ticker: "VTIP", name: "[Partner Brokerage] Vanguard Short-Term Inflation-Protected Securities ETF", shares: 350, currentPrice: 48.40, costBasis: 49.50, accountType: "Taxable", assetClass: "Bonds", expenseRatio: 0.0004 },
+  { id: "p-br-003", ticker: "JNJ",  name: "[Partner Brokerage] Johnson & Johnson", shares: 45, currentPrice: 155.20, costBasis: 165.00, accountType: "Taxable", assetClass: "US Stocks", expenseRatio: 0 },
+  { id: "p-br-004", ticker: "PG",   name: "[Partner Brokerage] Procter & Gamble", shares: 35, currentPrice: 162.80, costBasis: 145.00, accountType: "Taxable", assetClass: "US Stocks", expenseRatio: 0 },
+  { id: "p-br-005", ticker: "SPAXX", name: "[Partner Brokerage] Fidelity Money Market (cash)", shares: 15000, currentPrice: 1.00, costBasis: 1.00, accountType: "Taxable", assetClass: "Cash", expenseRatio: 0.0042 },
+];
+
+/**
+ * Mock partner info for sample data
+ */
+export const SAMPLE_PARTNER = {
+  id: 'sample-partner-id',
+  name: 'Sarah',
+  email: 'sarah@example.com',
+  relationshipType: 'spouse' as const,
+};
+
+/**
  * Optional: grouped view for future UI (does not affect current dashboard).
  */
 export const SAMPLE_HOLDINGS_BY_ACCOUNT = {
   brokerage: SAMPLE_HOLDINGS.filter((h) => h.id.startsWith("br-")),
   tradIra: SAMPLE_HOLDINGS.filter((h) => h.id.startsWith("ira-")),
   rothIra: SAMPLE_HOLDINGS.filter((h) => h.id.startsWith("roth-")),
+};
+
+export const PARTNER_HOLDINGS_BY_ACCOUNT = {
+  partner401k: PARTNER_SAMPLE_HOLDINGS.filter((h) => h.id.startsWith("p-401k-")),
+  partnerRoth: PARTNER_SAMPLE_HOLDINGS.filter((h) => h.id.startsWith("p-roth-")),
+  partnerBrokerage: PARTNER_SAMPLE_HOLDINGS.filter((h) => h.id.startsWith("p-br-")),
 };

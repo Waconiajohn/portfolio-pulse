@@ -354,6 +354,21 @@ export function usePartner() {
     }
   }, [partner, currentView, fetchPartnerHoldings]);
 
+  // Set sample partner data (for demo purposes)
+  const setSamplePartner = useCallback((samplePartner: Partner, sampleHoldings: Holding[]) => {
+    setPartner(samplePartner);
+    setPartnerHoldings(sampleHoldings);
+  }, []);
+
+  // Clear sample partner data
+  const clearSamplePartner = useCallback(() => {
+    if (partner?.id === 'sample-partner-id') {
+      setPartner(null);
+      setPartnerHoldings([]);
+      setCurrentView('individual');
+    }
+  }, [partner?.id]);
+
   return {
     partner,
     partnerHoldings,
@@ -369,5 +384,7 @@ export function usePartner() {
     removePartner,
     refetch: fetchPartnerData,
     fetchPartnerHoldings,
+    setSamplePartner,
+    clearSamplePartner,
   };
 }

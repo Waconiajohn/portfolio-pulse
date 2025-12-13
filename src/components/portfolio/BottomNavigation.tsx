@@ -1,4 +1,4 @@
-import { LayoutGrid, Table, LineChart, Settings } from 'lucide-react';
+import { LayoutGrid, Table, LineChart, Settings, GraduationCap } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface BottomNavigationProps {
@@ -7,8 +7,9 @@ interface BottomNavigationProps {
 }
 
 const navItems = [
-  { id: 'dashboard', label: 'Dashboard', icon: LayoutGrid },
+  { id: 'dashboard', label: 'Home', icon: LayoutGrid },
   { id: 'holdings', label: 'Holdings', icon: Table },
+  { id: 'learn', label: 'Learn', icon: GraduationCap },
   { id: 'charts', label: 'Analytics', icon: LineChart },
   { id: 'settings', label: 'Settings', icon: Settings },
 ];

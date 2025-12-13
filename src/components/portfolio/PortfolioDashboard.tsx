@@ -774,6 +774,10 @@ export function PortfolioDashboard() {
                 <MonteCarloSimulation portfolioValue={analysis.totalValue} expectedReturn={analysis.expectedReturn} volatility={analysis.volatility} currentAge={clientInfo.currentAge} />
               </div>
             )}
+
+            {activeTab === 'learn' && (
+              <EducationHub />
+            )}
           </div>
         )}
       </main>

@@ -183,6 +183,80 @@ export type Database = {
           },
         ]
       }
+      partner_invitations: {
+        Row: {
+          created_at: string
+          expires_at: string
+          id: string
+          invitee_email: string
+          inviter_id: string
+          message: string | null
+          relationship_type: Database["public"]["Enums"]["partner_relationship_type"]
+          status: Database["public"]["Enums"]["partner_invitation_status"]
+          token: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          expires_at?: string
+          id?: string
+          invitee_email: string
+          inviter_id: string
+          message?: string | null
+          relationship_type?: Database["public"]["Enums"]["partner_relationship_type"]
+          status?: Database["public"]["Enums"]["partner_invitation_status"]
+          token?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          expires_at?: string
+          id?: string
+          invitee_email?: string
+          inviter_id?: string
+          message?: string | null
+          relationship_type?: Database["public"]["Enums"]["partner_relationship_type"]
+          status?: Database["public"]["Enums"]["partner_invitation_status"]
+          token?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      partner_links: {
+        Row: {
+          created_at: string
+          id: string
+          invitation_id: string | null
+          partner_id: string
+          relationship_type: Database["public"]["Enums"]["partner_relationship_type"]
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          invitation_id?: string | null
+          partner_id: string
+          relationship_type?: Database["public"]["Enums"]["partner_relationship_type"]
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          invitation_id?: string | null
+          partner_id?: string
+          relationship_type?: Database["public"]["Enums"]["partner_relationship_type"]
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "partner_links_invitation_id_fkey"
+            columns: ["invitation_id"]
+            isOneToOne: false
+            referencedRelation: "partner_invitations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           created_at: string | null
@@ -246,6 +320,8 @@ export type Database = {
     }
     Enums: {
       app_role: "admin" | "user"
+      partner_invitation_status: "pending" | "accepted" | "declined" | "expired"
+      partner_relationship_type: "spouse" | "partner" | "financial-partner"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -374,6 +450,8 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["admin", "user"],
+      partner_invitation_status: ["pending", "accepted", "declined", "expired"],
+      partner_relationship_type: ["spouse", "partner", "financial-partner"],
     },
   },
 } as const

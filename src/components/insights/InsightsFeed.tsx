@@ -27,31 +27,31 @@ export function InsightsFeed({ cards, onViewCard }: InsightsFeedProps) {
       
       switch (card.id) {
         case 'riskDiversification':
-          message = 'Your portfolio is concentrated in a small number of investments.';
+          message = 'Consider diversifying — your portfolio is concentrated in a few investments';
           break;
         case 'costAnalysis':
-          message = 'Investment fees may be reducing your long-term growth.';
+          message = 'Review fees — they may be reducing your long-term growth';
           break;
         case 'downsideResilience':
-          message = 'Your portfolio may be vulnerable in a market downturn.';
+          message = 'Strengthen downside protection — vulnerability detected in market stress';
           break;
         case 'taxEfficiency':
-          message = 'There may be opportunities to reduce your tax burden.';
+          message = 'Explore tax savings — opportunities may exist to reduce your burden';
           break;
         case 'riskAdjusted':
-          message = 'Your risk level may not match your expected returns.';
+          message = 'Reassess risk level — it may not match your expected returns';
           break;
         case 'planningGaps':
-          message = 'Some important planning basics need attention.';
+          message = 'Address planning basics — some important items need attention';
           break;
         case 'lifetimeIncomeSecurity':
-          message = 'Your retirement income security could be improved.';
+          message = 'Shore up income security — your retirement stream could be stronger';
           break;
         case 'crossAccountConcentration':
-          message = 'Hidden overlap exists across your accounts.';
+          message = 'Check for overlap — hidden concentration exists across accounts';
           break;
         case 'performanceOptimization':
-          message = 'Your returns may not be matching expectations for your risk.';
+          message = 'Optimize returns — they may not be matching expectations for your risk';
           break;
         default:
           return;
@@ -77,7 +77,7 @@ export function InsightsFeed({ cards, onViewCard }: InsightsFeedProps) {
       <CardContent className="py-3 px-4">
         <div className="flex items-center gap-2 mb-2">
           <Lightbulb className="h-4 w-4 text-primary" />
-          <span className="text-xs font-medium text-primary">For You</span>
+          <span className="text-xs font-medium text-primary">Key Takeaways</span>
         </div>
         <div className="space-y-2">
           {insights.map(insight => (

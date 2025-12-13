@@ -511,18 +511,10 @@ export function PortfolioDashboard() {
                 />
               ) : (
                 <div className="space-y-4 sm:space-y-6">
-                   {/* Portfolio Snapshot Banner */}
-                   <PortfolioSnapshot
-                    totalValue={snapshotData.totalValue}
-                    accountCount={snapshotData.accountCount}
-                    issuesCount={snapshotData.issuesCount}
-                  />
-                  
-                  {/* Insights Feed - proactive intelligence */}
-                  <InsightsFeed 
-                    cards={cardContracts} 
-                    onViewCard={(cardId) => setSelectedCategory(cardId)} 
-                  />
+                  {/* Linked Accounts first */}
+                  <div className="hidden lg:block">
+                    <LinkedAccountsPanel onHoldingsSync={() => {}} sampleAccounts={sampleAccounts} />
+                  </div>
 
                   <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 sm:gap-6">
                     <div className="lg:col-span-3 space-y-6">
@@ -587,9 +579,22 @@ export function PortfolioDashboard() {
                           </div>
                         </div>
                       )}
+
+                      {/* Portfolio Snapshot - Summary after cards */}
+                      <PortfolioSnapshot
+                        totalValue={snapshotData.totalValue}
+                        accountCount={snapshotData.accountCount}
+                        issuesCount={snapshotData.issuesCount}
+                      />
+                      
+                      {/* Insights Feed - Key Takeaways */}
+                      <InsightsFeed 
+                        cards={cardContracts} 
+                        onViewCard={(cardId) => setSelectedCategory(cardId)} 
+                      />
                     </div>
                     
-                    {/* Action Plan below cards */}
+                    {/* Action Plan sidebar */}
                     <div className="space-y-4">
                       <ActionPlanPanel
                         actionPlan={actionPlan}
@@ -598,11 +603,24 @@ export function PortfolioDashboard() {
                       
                       {/* Tactical Education Panel - conditional */}
                       <TacticalEducationPanel cards={cardContracts} />
+                      
+                      {/* Advisor content in sidebar */}
+                      {isAdvisor && (
+                        <>
+                          <ClientManager 
+                            onSelectClient={(client) => {
+                              setClientInfo(prev => ({
+                                ...prev,
+                                name: client.name,
+                                riskTolerance: client.riskTolerance,
+                              }));
+                              setSidebarOpen(false);
+                            }}
+                          />
+                          <CompliancePanel clientName={clientInfo.name} />
+                        </>
+                      )}
                     </div>
-                  </div>
-
-                  <div className="hidden lg:block space-y-6">
-                    <SidebarContent />
                   </div>
                 </div>
               )}
@@ -682,20 +700,7 @@ export function PortfolioDashboard() {
                   />
                 ) : (
                   <div className="space-y-4">
-                    {/* Portfolio Snapshot Banner */}
-                    <PortfolioSnapshot
-                      totalValue={snapshotData.totalValue}
-                      accountCount={snapshotData.accountCount}
-                      issuesCount={snapshotData.issuesCount}
-                    />
-                    
-                    {/* Insights Feed */}
-                    <InsightsFeed 
-                      cards={cardContracts} 
-                      onViewCard={(cardId) => setSelectedCategory(cardId)} 
-                    />
-
-                    {/* Linked Accounts above diagnostic cards on mobile */}
+                    {/* Linked Accounts first on mobile */}
                     {isConsumer && <LinkedAccountsPanel onHoldingsSync={() => {}} compact sampleAccounts={sampleAccounts} />}
                     
                     {/* Swipeable Diagnostic Cards Carousel */}
@@ -706,7 +711,20 @@ export function PortfolioDashboard() {
                       onViewDetails={(key) => setSelectedCategory(key)}
                     />
                     
-                    {/* Action Plan below cards on mobile */}
+                    {/* Portfolio Snapshot - Summary after cards */}
+                    <PortfolioSnapshot
+                      totalValue={snapshotData.totalValue}
+                      accountCount={snapshotData.accountCount}
+                      issuesCount={snapshotData.issuesCount}
+                    />
+                    
+                    {/* Insights Feed - Key Takeaways */}
+                    <InsightsFeed 
+                      cards={cardContracts} 
+                      onViewCard={(cardId) => setSelectedCategory(cardId)} 
+                    />
+                    
+                    {/* Action Plan below insights on mobile */}
                     <div ref={actionPlanContainerRef} className="space-y-4">
                       <ActionPlanPanel
                         ref={actionPlanRef}

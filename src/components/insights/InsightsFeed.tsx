@@ -1,6 +1,7 @@
-import { useMemo } from 'react';
-import { ChevronRight, Lightbulb, Shield, Lock } from 'lucide-react';
+import { useMemo, useState } from 'react';
+import { ChevronRight, ChevronDown, ChevronUp, Lightbulb, Lock } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
 import type { CardContract } from '@/domain/cards/types';
 
 interface InsightsFeedProps {
@@ -15,7 +16,11 @@ interface Insight {
   priority: number;
 }
 
+const DEFAULT_VISIBLE = 3;
+
 export function InsightsFeed({ cards, onViewCard }: InsightsFeedProps) {
+  const [expanded, setExpanded] = useState(false);
+
   const insights = useMemo(() => {
     const result: Insight[] = [];
     
@@ -65,10 +70,11 @@ export function InsightsFeed({ cards, onViewCard }: InsightsFeedProps) {
       });
     });
     
-    return result
-      .sort((a, b) => a.priority - b.priority)
-      .slice(0, 3);
+    return result.sort((a, b) => a.priority - b.priority);
   }, [cards]);
+
+  const visibleInsights = expanded ? insights : insights.slice(0, DEFAULT_VISIBLE);
+  const hasMore = insights.length > DEFAULT_VISIBLE;
 
   if (insights.length === 0) return null;
 
@@ -78,9 +84,14 @@ export function InsightsFeed({ cards, onViewCard }: InsightsFeedProps) {
         <div className="flex items-center gap-2 mb-2">
           <Lightbulb className="h-4 w-4 text-primary" />
           <span className="text-xs font-medium text-primary">Key Takeaways</span>
+          {hasMore && (
+            <span className="text-[10px] text-muted-foreground ml-auto">
+              {expanded ? insights.length : DEFAULT_VISIBLE} of {insights.length}
+            </span>
+          )}
         </div>
         <div className="space-y-2">
-          {insights.map(insight => (
+          {visibleInsights.map(insight => (
             <button
               key={insight.id}
               onClick={() => onViewCard(insight.cardId)}
@@ -93,6 +104,28 @@ export function InsightsFeed({ cards, onViewCard }: InsightsFeedProps) {
             </button>
           ))}
         </div>
+        
+        {/* Expand/Collapse button */}
+        {hasMore && (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setExpanded(!expanded)}
+            className="w-full mt-2 h-7 text-xs text-muted-foreground hover:text-foreground"
+          >
+            {expanded ? (
+              <>
+                <ChevronUp className="h-3 w-3 mr-1" />
+                Show less
+              </>
+            ) : (
+              <>
+                <ChevronDown className="h-3 w-3 mr-1" />
+                Show {insights.length - DEFAULT_VISIBLE} more
+              </>
+            )}
+          </Button>
+        )}
         
         {/* Trust note */}
         <div className="mt-3 pt-3 border-t border-primary/10 flex items-center gap-2">

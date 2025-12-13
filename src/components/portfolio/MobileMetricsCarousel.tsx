@@ -1,3 +1,4 @@
+import { forwardRef } from 'react';
 import { PortfolioAnalysis } from '@/types/portfolio';
 import { PerformanceMetrics } from '@/types/performance-metrics';
 import { ScoringConfig } from '@/lib/scoring-config';
@@ -18,33 +19,36 @@ interface MetricItemProps {
   trend?: 'up' | 'down' | 'neutral';
 }
 
-function MetricItem({ label, value, subValue, trend }: MetricItemProps) {
-  return (
-    <div className="flex-shrink-0 min-w-[120px] p-3 bg-card rounded-xl border border-border">
-      <div className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">
-        {label}
-      </div>
-      <div className="flex items-center gap-1.5">
-        <span className="text-lg font-semibold font-mono">{value}</span>
-        {trend && (
-          <span className={cn(
-            "flex-shrink-0",
-            trend === 'up' && "text-status-good",
-            trend === 'down' && "text-status-critical",
-            trend === 'neutral' && "text-muted-foreground"
-          )}>
-            {trend === 'up' && <TrendingUp size={14} />}
-            {trend === 'down' && <TrendingDown size={14} />}
-            {trend === 'neutral' && <Minus size={14} />}
-          </span>
+const MetricItem = forwardRef<HTMLDivElement, MetricItemProps>(
+  ({ label, value, subValue, trend }, ref) => {
+    return (
+      <div ref={ref} className="flex-shrink-0 min-w-[120px] p-3 bg-card rounded-xl border border-border">
+        <div className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">
+          {label}
+        </div>
+        <div className="flex items-center gap-1.5">
+          <span className="text-lg font-semibold font-mono">{value}</span>
+          {trend && (
+            <span className={cn(
+              "flex-shrink-0",
+              trend === 'up' && "text-status-good",
+              trend === 'down' && "text-status-critical",
+              trend === 'neutral' && "text-muted-foreground"
+            )}>
+              {trend === 'up' && <TrendingUp size={14} />}
+              {trend === 'down' && <TrendingDown size={14} />}
+              {trend === 'neutral' && <Minus size={14} />}
+            </span>
+          )}
+        </div>
+        {subValue && (
+          <div className="text-[10px] text-muted-foreground mt-0.5">{subValue}</div>
         )}
       </div>
-      {subValue && (
-        <div className="text-[10px] text-muted-foreground mt-0.5">{subValue}</div>
-      )}
-    </div>
-  );
-}
+    );
+  }
+);
+MetricItem.displayName = 'MetricItem';
 
 export function MobileMetricsCarousel({ analysis, scoringConfig, performanceMetrics, onViewAllMetrics }: MobileMetricsCarouselProps) {
   const feePercent = ((analysis.totalFees / (analysis.totalValue || 1)) * 100).toFixed(2);

@@ -52,7 +52,7 @@ export function PortfolioSnapshot({ totalValue, accountCount, issuesCount }: Por
           
           {/* Helper text */}
           <p className="text-xs text-muted-foreground max-w-md">
-            This view combines all of your accounts to identify the biggest risks and opportunities across your entire portfolio.
+            Based on your accounts above, here's a summary of what we found across your entire portfolio.
           </p>
         </div>
       </CardContent>

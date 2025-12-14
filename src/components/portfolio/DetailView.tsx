@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { motion, useMotionValue, useTransform, PanInfo } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { DiagnosticResult, RiskTolerance, PlanningChecklist, GuaranteedIncomeSource, LifetimeIncomeInputs, GuaranteedIncomeSourceType } from '@/types/portfolio';
 import type { CardContract } from '@/domain/cards/types';
 import { PerformanceMetrics, MetricStatus, METRIC_EDUCATION } from '@/types/performance-metrics';
@@ -1377,17 +1377,8 @@ export function DetailView({
     );
   };
 
-  // Swipe gesture handling
-  const x = useMotionValue(0);
-  const opacity = useTransform(x, [0, 100, 200], [1, 0.8, 0.5]);
-  const scale = useTransform(x, [0, 100, 200], [1, 0.98, 0.95]);
-
-  const handleDragEnd = (_: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) => {
-    // If swiped right more than 100px or with enough velocity, close the view
-    if (info.offset.x > 100 || info.velocity.x > 500) {
-      onClose();
-    }
-  };
+  // Removed drag gesture - it was intercepting all button clicks
+  // Simple slide-in animation without drag dismissal
 
   return (
     <motion.div
@@ -1395,31 +1386,19 @@ export function DetailView({
       animate={{ x: 0, opacity: 1 }}
       exit={{ x: '100%', opacity: 0 }}
       transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-      style={{ x, opacity, scale }}
-      drag="x"
-      dragConstraints={{ left: 0, right: 0 }}
-      dragElastic={{ left: 0, right: 0.5 }}
-      onDragEnd={handleDragEnd}
-      className="touch-pan-y"
     >
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
           <div className="flex items-center gap-3">
-            <div 
-              onPointerDownCapture={(e) => e.stopPropagation()}
-              onTouchStartCapture={(e) => e.stopPropagation()}
-              className="md:hidden"
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              onClick={onClose}
+              className="md:hidden -ml-2 mr-1 gap-1 text-muted-foreground hover:text-foreground"
             >
-              <Button 
-                variant="ghost" 
-                size="sm" 
-                onClick={onClose}
-                className="-ml-2 mr-1 gap-1 text-muted-foreground hover:text-foreground"
-              >
-                <ChevronLeft size={18} />
-                <span className="text-xs">Back</span>
-              </Button>
-            </div>
+              <ChevronLeft size={18} />
+              <span className="text-xs">Back</span>
+            </Button>
             <CardTitle className="text-base md:text-lg">{name}</CardTitle>
             <StatusBadge status={result.status} showLabel />
           </div>
@@ -1428,21 +1407,21 @@ export function DetailView({
           </Button>
         </CardHeader>
         <CardContent className="space-y-6">
-        {/* Section 1: Why this matters */}
-        {card?.whyItMatters && (
-          <div className="space-y-2">
-            <h3 className="text-sm font-semibold">Why this matters</h3>
-            <p className="text-sm text-muted-foreground leading-relaxed">{card.whyItMatters}</p>
-            {card.contextLabel && (
-              <div className="mt-2 p-2 rounded-md bg-primary/10 border border-primary/20">
-                <span className="text-sm font-medium text-primary">{card.contextLabel}</span>
-                <span className="text-sm text-muted-foreground ml-1">
-                  — consider focusing improvements here first.
-                </span>
-              </div>
-            )}
-          </div>
-        )}
+        {/* Section 1: Why this matters - always show with fallback */}
+        <div className="space-y-2">
+          <h3 className="text-sm font-semibold">Why this matters</h3>
+          <p className="text-sm text-muted-foreground leading-relaxed">
+            {card?.whyItMatters || "Understanding this metric helps you make informed decisions about your portfolio."}
+          </p>
+          {card?.contextLabel && (
+            <div className="mt-2 p-2 rounded-md bg-primary/10 border border-primary/20">
+              <span className="text-sm font-medium text-primary">{card.contextLabel}</span>
+              <span className="text-sm text-muted-foreground ml-1">
+                — consider focusing improvements here first.
+              </span>
+            </div>
+          )}
+        </div>
 
         {/* Section 2: What's driving this */}
         <div className="space-y-3">
@@ -1459,10 +1438,10 @@ export function DetailView({
           </div>
         </div>
 
-        {/* Section 3: Suggested actions */}
-        {card?.actions && card.actions.length > 0 && (
-          <div className="space-y-2">
-            <h3 className="text-sm font-semibold">Suggested actions</h3>
+        {/* Section 3: Suggested actions - always show with fallback */}
+        <div className="space-y-2">
+          <h3 className="text-sm font-semibold">Suggested actions</h3>
+          {card?.actions && card.actions.length > 0 ? (
             <div className="flex flex-wrap gap-2">
               {card.actions.map((a, idx) => (
                 <Button
@@ -1479,8 +1458,12 @@ export function DetailView({
                 </Button>
               ))}
             </div>
-          </div>
-        )}
+          ) : (
+            <p className="text-sm text-muted-foreground">
+              Add holdings to your portfolio to see personalized action recommendations.
+            </p>
+          )}
+        </div>
 
         {/* Recommendations */}
         {card?.recommendations && card.recommendations.length > 0 && (

@@ -73,15 +73,31 @@ export function DetailView({
   const [incomeOpen, setIncomeOpen] = useState(false);
 
   const renderSectorChart = () => {
-    if (!details.sectorWeights) return null;
+    if (!details.sectorWeights) {
+      return (
+        <div className="space-y-2">
+          <h4 className="text-sm font-medium">Sector Allocation</h4>
+          <p className="text-sm text-muted-foreground">Add holdings to see sector allocation breakdown.</p>
+        </div>
+      );
+    }
     
     const data = Object.entries(details.sectorWeights as Record<string, number>)
-      .filter(([_, weight]) => weight > 0)
+      .filter(([_, weight]) => typeof weight === 'number' && !isNaN(weight) && isFinite(weight) && weight > 0)
       .map(([sector, weight]) => ({
         name: sector,
-        value: Math.round(weight * 100),
+        value: Math.round((weight || 0) * 100),
       }))
       .sort((a, b) => b.value - a.value);
+
+    if (data.length === 0) {
+      return (
+        <div className="space-y-2">
+          <h4 className="text-sm font-medium">Sector Allocation</h4>
+          <p className="text-sm text-muted-foreground">No valid sector data available.</p>
+        </div>
+      );
+    }
 
     return (
       <div className="space-y-2">
@@ -119,13 +135,31 @@ export function DetailView({
   };
 
   const renderTopPositions = () => {
-    if (!details.topPositions && !details.top10) return null;
+    if (!details.topPositions && !details.top10) {
+      return (
+        <div className="space-y-2">
+          <h4 className="text-sm font-medium">Top Holdings</h4>
+          <p className="text-sm text-muted-foreground">Add holdings to see your top positions.</p>
+        </div>
+      );
+    }
     
     const positions = (details.topPositions || details.top10) as Array<{ ticker: string; weight: number }>;
-    const data = positions.slice(0, 5).map(p => ({
-      name: p.ticker,
-      value: Math.round(p.weight * 100),
-    }));
+    const data = positions.slice(0, 5)
+      .filter(p => p && typeof p.weight === 'number' && !isNaN(p.weight) && isFinite(p.weight))
+      .map(p => ({
+        name: p.ticker || 'Unknown',
+        value: Math.round((p.weight || 0) * 100),
+      }));
+
+    if (data.length === 0) {
+      return (
+        <div className="space-y-2">
+          <h4 className="text-sm font-medium">Top Holdings</h4>
+          <p className="text-sm text-muted-foreground">No valid position data available.</p>
+        </div>
+      );
+    }
 
     return (
       <div className="space-y-2">
@@ -152,10 +186,27 @@ export function DetailView({
   };
 
   const renderFeeBreakdown = () => {
-    if (!details.holdingFees) return null;
+    if (!details.holdingFees) {
+      return (
+        <div className="space-y-2">
+          <h4 className="text-sm font-medium">Fee Breakdown</h4>
+          <p className="text-sm text-muted-foreground">Add holdings to see fee analysis.</p>
+        </div>
+      );
+    }
     
     const fees = (details.holdingFees as Array<{ ticker: string; expenseRatio: number; annualFee: number }>)
+      .filter(f => f && typeof f.expenseRatio === 'number' && !isNaN(f.expenseRatio))
       .slice(0, 5);
+
+    if (fees.length === 0) {
+      return (
+        <div className="space-y-2">
+          <h4 className="text-sm font-medium">Fee Breakdown</h4>
+          <p className="text-sm text-muted-foreground">No fee data available for current holdings.</p>
+        </div>
+      );
+    }
 
     return (
       <div className="space-y-2">
@@ -163,17 +214,17 @@ export function DetailView({
         <div className="space-y-2">
           {fees.map(fee => (
             <div key={fee.ticker} className="flex items-center justify-between text-sm">
-              <span className="font-mono">{fee.ticker}</span>
+              <span className="font-mono">{fee.ticker || 'Unknown'}</span>
               <div className="text-right">
-                <span className="font-mono">{(fee.expenseRatio * 100).toFixed(2)}%</span>
+                <span className="font-mono">{((fee.expenseRatio || 0) * 100).toFixed(2)}%</span>
                 <span className="text-muted-foreground ml-2">
-                  (${fee.annualFee.toLocaleString(undefined, { maximumFractionDigits: 0 })}/yr)
+                  (${(fee.annualFee || 0).toLocaleString(undefined, { maximumFractionDigits: 0 })}/yr)
                 </span>
               </div>
             </div>
           ))}
         </div>
-        {details.tenYearImpact && (
+        {details.tenYearImpact && typeof details.tenYearImpact === 'number' && !isNaN(details.tenYearImpact) && (
           <div className="mt-4 p-3 bg-destructive/10 rounded-lg border border-destructive/20">
             <div className="text-sm text-muted-foreground">10-Year Fee Impact</div>
             <div className="font-mono text-lg font-semibold text-destructive">
@@ -186,15 +237,31 @@ export function DetailView({
   };
 
   const renderEfficiencyTable = () => {
-    if (!details.holdingEfficiency) return null;
+    if (!details.holdingEfficiency) {
+      return (
+        <div className="space-y-2">
+          <h4 className="text-sm font-medium">Holding Efficiency</h4>
+          <p className="text-sm text-muted-foreground">Add holdings to see efficiency analysis.</p>
+        </div>
+      );
+    }
     
-    const efficiency = details.holdingEfficiency as Array<{ 
+    const efficiency = (details.holdingEfficiency as Array<{ 
       ticker: string; 
       sharpe: number; 
       contribution: string; 
       weight: number;
       pctOfTarget?: number;
-    }>;
+    }>).filter(h => h && typeof h.sharpe === 'number' && !isNaN(h.sharpe));
+
+    if (efficiency.length === 0) {
+      return (
+        <div className="space-y-2">
+          <h4 className="text-sm font-medium">Holding Efficiency</h4>
+          <p className="text-sm text-muted-foreground">No efficiency data available.</p>
+        </div>
+      );
+    }
 
     return (
       <div className="space-y-2">
@@ -205,16 +272,16 @@ export function DetailView({
         <div className="space-y-1">
           {efficiency.map(h => (
             <div key={h.ticker} className="flex items-center justify-between text-sm p-2 rounded bg-muted/30">
-              <span className="font-mono">{h.ticker}</span>
+              <span className="font-mono">{h.ticker || 'Unknown'}</span>
               <div className="flex items-center gap-3">
                 <span className="text-muted-foreground">
-                  Sharpe: {h.sharpe.toFixed(2)} {h.pctOfTarget !== undefined && `(${h.pctOfTarget}%)`}
+                  Sharpe: {(h.sharpe || 0).toFixed(2)} {h.pctOfTarget !== undefined && `(${h.pctOfTarget}%)`}
                 </span>
                 <span className={`text-xs px-2 py-0.5 rounded ${
                   h.contribution === 'GOOD' ? 'status-good' : 
                   h.contribution === 'BELOW TARGET' ? 'status-warning' : 'status-critical'
                 }`}>
-                  {h.contribution}
+                  {h.contribution || 'Unknown'}
                 </span>
               </div>
             </div>
@@ -225,9 +292,16 @@ export function DetailView({
   };
 
   const renderProtectionRisks = () => {
-    if (!details.riskDetails) return null;
+    if (!details.riskDetails) {
+      return (
+        <div className="space-y-2 col-span-2">
+          <h4 className="text-sm font-medium">Risk Category Breakdown</h4>
+          <p className="text-sm text-muted-foreground">Add holdings to see risk analysis.</p>
+        </div>
+      );
+    }
     
-    const risks = details.riskDetails as Array<{ 
+    const risks = (details.riskDetails as Array<{ 
       name: string;
       label: string;
       score: number;
@@ -235,7 +309,16 @@ export function DetailView({
       severity: string;
       description: string;
       mitigation: string;
-    }>;
+    }>).filter(r => r && r.name);
+
+    if (risks.length === 0) {
+      return (
+        <div className="space-y-2 col-span-2">
+          <h4 className="text-sm font-medium">Risk Category Breakdown</h4>
+          <p className="text-sm text-muted-foreground">No risk data available.</p>
+        </div>
+      );
+    }
 
     const getSeverityColor = (severity: string) => {
       switch (severity) {
@@ -260,16 +343,16 @@ export function DetailView({
               }`}
             >
               <div className="flex items-center justify-between mb-2">
-                <span className="text-sm font-medium">{risk.label}</span>
+                <span className="text-sm font-medium">{risk.label || risk.name}</span>
                 <div className="flex items-center gap-2">
-                  <span className="font-mono text-sm">{risk.score}/{risk.maxScore}</span>
+                  <span className="font-mono text-sm">{risk.score ?? 0}/{risk.maxScore ?? 0}</span>
                   <span className={`text-xs px-2 py-0.5 rounded ${getSeverityColor(risk.severity)}`}>
-                    {risk.severity}
+                    {risk.severity || 'LOW'}
                   </span>
                 </div>
               </div>
-              <p className="text-xs text-muted-foreground mb-1">{risk.description}</p>
-              {(risk.severity === 'HIGH' || risk.severity === 'CRITICAL') && (
+              <p className="text-xs text-muted-foreground mb-1">{risk.description || ''}</p>
+              {(risk.severity === 'HIGH' || risk.severity === 'CRITICAL') && risk.mitigation && (
                 <p className="text-xs text-primary">💡 {risk.mitigation}</p>
               )}
             </div>
@@ -280,33 +363,61 @@ export function DetailView({
   };
 
   const renderScenarios = () => {
-    if (!details.scenarios) return null;
+    if (!details.scenarios) {
+      return (
+        <div className="space-y-2">
+          <h4 className="text-sm font-medium">Crisis Scenarios</h4>
+          <p className="text-sm text-muted-foreground">Add holdings to see crisis scenario analysis.</p>
+        </div>
+      );
+    }
     
     const scenarios = details.scenarios as Array<{ name: string; portfolioImpact: number; spImpact: number }>;
+
+    // Filter out invalid data
+    const validScenarios = scenarios.filter(s => 
+      s && 
+      typeof s.portfolioImpact === 'number' && 
+      !isNaN(s.portfolioImpact) && 
+      isFinite(s.portfolioImpact)
+    );
+
+    if (validScenarios.length === 0) {
+      return (
+        <div className="space-y-2">
+          <h4 className="text-sm font-medium">Crisis Scenarios</h4>
+          <p className="text-sm text-muted-foreground">No valid scenario data available.</p>
+        </div>
+      );
+    }
 
     return (
       <div className="space-y-2">
         <h4 className="text-sm font-medium">Crisis Scenarios</h4>
         <div className="space-y-2">
-          {scenarios.map(s => (
-            <div key={s.name} className="p-3 rounded bg-muted/30">
-              <div className="text-sm font-medium mb-2">{s.name}</div>
-              <div className="grid grid-cols-2 gap-4 text-sm">
-                <div>
-                  <div className="text-muted-foreground text-xs">Your Portfolio</div>
-                  <div className="font-mono text-destructive">
-                    {(s.portfolioImpact * 100).toFixed(0)}%
+          {validScenarios.map(s => {
+            const portfolioVal = ((s.portfolioImpact || 0) * 100).toFixed(0);
+            const spVal = ((s.spImpact || 0) * 100).toFixed(0);
+            return (
+              <div key={s.name} className="p-3 rounded bg-muted/30">
+                <div className="text-sm font-medium mb-2">{s.name || 'Unknown Scenario'}</div>
+                <div className="grid grid-cols-2 gap-4 text-sm">
+                  <div>
+                    <div className="text-muted-foreground text-xs">Your Portfolio</div>
+                    <div className="font-mono text-destructive text-base">
+                      {portfolioVal}%
+                    </div>
                   </div>
-                </div>
-                <div>
-                  <div className="text-muted-foreground text-xs">S&P 500</div>
-                  <div className="font-mono text-muted-foreground">
-                    {(s.spImpact * 100).toFixed(0)}%
+                  <div>
+                    <div className="text-muted-foreground text-xs">S&P 500</div>
+                    <div className="font-mono text-muted-foreground text-base">
+                      {spVal}%
+                    </div>
                   </div>
                 </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </div>
     );
@@ -1388,23 +1499,27 @@ export function DetailView({
       transition={{ type: 'spring', damping: 25, stiffness: 300 }}
     >
       <Card>
-        <CardHeader className="flex flex-row items-center justify-between">
-          <div className="flex items-center gap-3">
-            <Button 
-              variant="ghost" 
-              size="sm" 
-              onClick={onClose}
-              className="md:hidden -ml-2 mr-1 gap-1 text-muted-foreground hover:text-foreground"
-            >
-              <ChevronLeft size={18} />
-              <span className="text-xs">Back</span>
-            </Button>
-            <CardTitle className="text-base md:text-lg">{name}</CardTitle>
-            <StatusBadge status={result.status} showLabel />
+        <CardHeader className="pb-4">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-center gap-2 flex-wrap">
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                onClick={onClose}
+                className="lg:hidden -ml-2 gap-1 text-muted-foreground hover:text-foreground shrink-0"
+              >
+                <ChevronLeft size={18} />
+                <span className="text-xs">Back</span>
+              </Button>
+              <CardTitle className="text-base md:text-lg break-words">{name}</CardTitle>
+            </div>
+            <div className="flex items-center gap-2 justify-between sm:justify-end">
+              <StatusBadge status={result.status} showLabel />
+              <Button variant="ghost" size="icon" onClick={onClose} className="hidden lg:flex shrink-0">
+                <X size={18} />
+              </Button>
+            </div>
           </div>
-          <Button variant="ghost" size="icon" onClick={onClose} className="hidden md:flex">
-            <X size={18} />
-          </Button>
         </CardHeader>
         <CardContent className="space-y-6">
         {/* Section 1: Why this matters - always show with fallback */}

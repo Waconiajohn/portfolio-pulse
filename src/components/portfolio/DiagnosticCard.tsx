@@ -152,24 +152,27 @@ export function DiagnosticCard({
       onClick={onViewDetails}
     >
       <CardHeader className="pb-2 p-4 sm:p-5 sm:pb-3">
-        <div className="flex items-start justify-between gap-3">
-          <div className="min-w-0 flex-1">
-            <div className="flex items-center gap-2">
-              {getStatusIcon()}
-              <CardTitle className="text-base sm:text-lg font-semibold truncate">{name}</CardTitle>
-              <EducationPopup 
-                categoryKey={categoryKey} 
-                scoringConfig={scoringConfig}
-                riskTolerance={riskTolerance}
-              />
-            </div>
-            {subtitle && (
-              <p className="text-xs text-muted-foreground mt-1 ml-7">
-                {subtitle}
-              </p>
-            )}
+        <div className="flex flex-col gap-2">
+          {/* Row 1: Status badge */}
+          <div className="flex justify-end">
+            <StatusBadge status={result.status} label={STATUS_LABELS[result.status]} showLabel size="sm" />
           </div>
-          <StatusBadge status={result.status} label={STATUS_LABELS[result.status]} showLabel size="sm" />
+          {/* Row 2: Icon + Title + Education */}
+          <div className="flex items-center gap-2">
+            {getStatusIcon()}
+            <CardTitle className="text-base sm:text-lg font-semibold">{name}</CardTitle>
+            <EducationPopup 
+              categoryKey={categoryKey} 
+              scoringConfig={scoringConfig}
+              riskTolerance={riskTolerance}
+            />
+          </div>
+          {/* Row 3: Subtitle - flows naturally as a sentence */}
+          {subtitle && (
+            <p className="text-xs text-muted-foreground leading-relaxed">
+              {subtitle}
+            </p>
+          )}
         </div>
       </CardHeader>
       

@@ -544,11 +544,17 @@ export function PortfolioDashboard() {
             </div>
 
             <TabsContent value="dashboard" className="space-y-4 sm:space-y-6">
-              {selectedCategory ? (
+              {selectedCategory && selectedCard ? (
                 <DetailView
-                  name={DIAGNOSTIC_CATEGORIES[selectedCategory as keyof typeof DIAGNOSTIC_CATEGORIES].name}
+                  name={selectedCard.title}
                   categoryKey={selectedCategory}
-                  result={analysis.diagnostics[selectedCategory as keyof typeof analysis.diagnostics]}
+                  result={{
+                    status: selectedCard.status,
+                    score: selectedCard.score,
+                    keyFinding: selectedCard.keyFinding,
+                    headlineMetric: selectedCard.headlineMetric,
+                    details: selectedCard.details,
+                  }}
                   onClose={() => setSelectedCategory(null)}
                   scoringConfig={scoringConfig}
                   riskTolerance={clientInfo.riskTolerance}
@@ -739,12 +745,18 @@ export function PortfolioDashboard() {
           <div className="space-y-4">
             {activeTab === 'dashboard' && (
               <AnimatePresence mode="wait">
-                {selectedCategory ? (
+                {selectedCategory && selectedCard ? (
                   <DetailView
                     key="detail-view"
-                    name={DIAGNOSTIC_CATEGORIES[selectedCategory as keyof typeof DIAGNOSTIC_CATEGORIES].name}
+                    name={selectedCard.title}
                     categoryKey={selectedCategory}
-                    result={analysis.diagnostics[selectedCategory as keyof typeof analysis.diagnostics]}
+                    result={{
+                      status: selectedCard.status,
+                      score: selectedCard.score,
+                      keyFinding: selectedCard.keyFinding,
+                      headlineMetric: selectedCard.headlineMetric,
+                      details: selectedCard.details,
+                    }}
                     onClose={() => setSelectedCategory(null)}
                     scoringConfig={scoringConfig}
                     riskTolerance={clientInfo.riskTolerance}

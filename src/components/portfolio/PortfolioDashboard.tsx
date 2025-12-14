@@ -544,28 +544,45 @@ export function PortfolioDashboard() {
             </div>
 
             <TabsContent value="dashboard" className="space-y-4 sm:space-y-6">
-              {selectedCategory && selectedCard ? (
-                <DetailView
-                  name={selectedCard.title}
-                  categoryKey={selectedCategory}
-                  result={{
-                    status: selectedCard.status,
-                    score: selectedCard.score,
-                    keyFinding: selectedCard.keyFinding,
-                    headlineMetric: selectedCard.headlineMetric,
-                    details: selectedCard.details,
-                  }}
-                  onClose={() => setSelectedCategory(null)}
-                  scoringConfig={scoringConfig}
-                  riskTolerance={clientInfo.riskTolerance}
-                  clientAge={clientInfo.currentAge}
-                  inflationRate={assumptions.inflationRate}
-                  checklist={checklist}
-                  onChecklistUpdate={setChecklist}
-                  lifetimeIncomeInputs={lifetimeIncomeInputs}
-                  onLifetimeIncomeUpdate={setLifetimeIncomeInputs}
-                  card={selectedCard}
-                />
+              {selectedCategory ? (
+                (() => {
+                  const diagResult = analysis.diagnostics[selectedCategory as keyof typeof analysis.diagnostics];
+                  const catConfig = DIAGNOSTIC_CATEGORIES[selectedCategory as keyof typeof DIAGNOSTIC_CATEGORIES];
+                  const cardName = selectedCard?.title ?? catConfig?.name ?? selectedCategory;
+                  const result = selectedCard 
+                    ? {
+                        status: selectedCard.status,
+                        score: selectedCard.score,
+                        keyFinding: selectedCard.keyFinding,
+                        headlineMetric: selectedCard.headlineMetric,
+                        details: selectedCard.details,
+                      }
+                    : diagResult;
+                  
+                  if (!result) {
+                    // No data for this category, close the detail view
+                    setSelectedCategory(null);
+                    return null;
+                  }
+                  
+                  return (
+                    <DetailView
+                      name={cardName}
+                      categoryKey={selectedCategory}
+                      result={result}
+                      onClose={() => setSelectedCategory(null)}
+                      scoringConfig={scoringConfig}
+                      riskTolerance={clientInfo.riskTolerance}
+                      clientAge={clientInfo.currentAge}
+                      inflationRate={assumptions.inflationRate}
+                      checklist={checklist}
+                      onChecklistUpdate={setChecklist}
+                      lifetimeIncomeInputs={lifetimeIncomeInputs}
+                      onLifetimeIncomeUpdate={setLifetimeIncomeInputs}
+                      card={selectedCard}
+                    />
+                  );
+                })()
               ) : (
                 <div className="space-y-4 sm:space-y-6">
                   {/* Linked Accounts first */}
@@ -745,29 +762,44 @@ export function PortfolioDashboard() {
           <div className="space-y-4">
             {activeTab === 'dashboard' && (
               <AnimatePresence mode="wait">
-                {selectedCategory && selectedCard ? (
-                  <DetailView
-                    key="detail-view"
-                    name={selectedCard.title}
-                    categoryKey={selectedCategory}
-                    result={{
-                      status: selectedCard.status,
-                      score: selectedCard.score,
-                      keyFinding: selectedCard.keyFinding,
-                      headlineMetric: selectedCard.headlineMetric,
-                      details: selectedCard.details,
-                    }}
-                    onClose={() => setSelectedCategory(null)}
-                    scoringConfig={scoringConfig}
-                    riskTolerance={clientInfo.riskTolerance}
-                    clientAge={clientInfo.currentAge}
-                    inflationRate={assumptions.inflationRate}
-                    checklist={checklist}
-                    onChecklistUpdate={setChecklist}
-                    lifetimeIncomeInputs={lifetimeIncomeInputs}
-                    onLifetimeIncomeUpdate={setLifetimeIncomeInputs}
-                    card={selectedCard}
-                  />
+                {selectedCategory ? (
+                  (() => {
+                    const diagResult = analysis.diagnostics[selectedCategory as keyof typeof analysis.diagnostics];
+                    const catConfig = DIAGNOSTIC_CATEGORIES[selectedCategory as keyof typeof DIAGNOSTIC_CATEGORIES];
+                    const cardName = selectedCard?.title ?? catConfig?.name ?? selectedCategory;
+                    const result = selectedCard 
+                      ? {
+                          status: selectedCard.status,
+                          score: selectedCard.score,
+                          keyFinding: selectedCard.keyFinding,
+                          headlineMetric: selectedCard.headlineMetric,
+                          details: selectedCard.details,
+                        }
+                      : diagResult;
+                    
+                    if (!result) {
+                      return null;
+                    }
+                    
+                    return (
+                      <DetailView
+                        key="detail-view"
+                        name={cardName}
+                        categoryKey={selectedCategory}
+                        result={result}
+                        onClose={() => setSelectedCategory(null)}
+                        scoringConfig={scoringConfig}
+                        riskTolerance={clientInfo.riskTolerance}
+                        clientAge={clientInfo.currentAge}
+                        inflationRate={assumptions.inflationRate}
+                        checklist={checklist}
+                        onChecklistUpdate={setChecklist}
+                        lifetimeIncomeInputs={lifetimeIncomeInputs}
+                        onLifetimeIncomeUpdate={setLifetimeIncomeInputs}
+                        card={selectedCard}
+                      />
+                    );
+                  })()
                 ) : (
                   <div key="carousel-view" className="space-y-4 animate-fade-in">
                     {/* Linked Accounts first on mobile */}

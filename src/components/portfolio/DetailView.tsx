@@ -1405,19 +1405,21 @@ export function DetailView({
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
           <div className="flex items-center gap-3">
-            <Button 
-              variant="ghost" 
-              size="sm" 
-              onClick={(e) => {
-                e.stopPropagation();
-                onClose();
-              }}
-              onPointerDown={(e) => e.stopPropagation()}
-              className="md:hidden -ml-2 mr-1 gap-1 text-muted-foreground hover:text-foreground relative z-10"
+            <div 
+              onPointerDownCapture={(e) => e.stopPropagation()}
+              onTouchStartCapture={(e) => e.stopPropagation()}
+              className="md:hidden"
             >
-              <ChevronLeft size={18} />
-              <span className="text-xs">Back</span>
-            </Button>
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                onClick={onClose}
+                className="-ml-2 mr-1 gap-1 text-muted-foreground hover:text-foreground"
+              >
+                <ChevronLeft size={18} />
+                <span className="text-xs">Back</span>
+              </Button>
+            </div>
             <CardTitle className="text-base md:text-lg">{name}</CardTitle>
             <StatusBadge status={result.status} showLabel />
           </div>

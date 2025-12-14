@@ -1408,8 +1408,12 @@ export function DetailView({
             <Button 
               variant="ghost" 
               size="sm" 
-              onClick={onClose}
-              className="md:hidden -ml-2 mr-1 gap-1 text-muted-foreground hover:text-foreground"
+              onClick={(e) => {
+                e.stopPropagation();
+                onClose();
+              }}
+              onPointerDown={(e) => e.stopPropagation()}
+              className="md:hidden -ml-2 mr-1 gap-1 text-muted-foreground hover:text-foreground relative z-10"
             >
               <ChevronLeft size={18} />
               <span className="text-xs">Back</span>

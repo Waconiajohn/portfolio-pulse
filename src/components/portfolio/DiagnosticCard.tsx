@@ -27,14 +27,19 @@ const getPlainEnglishExplanation = (status: 'GREEN' | 'YELLOW' | 'RED', category
       YELLOW: "Some areas could use more variety to protect you better.",
       RED: "Too much in one basket could hurt if markets drop.",
     },
+    riskDiversification: {
+      GREEN: "Your investments are well spread out, reducing risk.",
+      YELLOW: "Some areas could use more variety to protect you better.",
+      RED: "Too much in one basket could hurt if markets drop.",
+    },
     concentration: {
       GREEN: "No single investment dominates your portfolio.",
       YELLOW: "A few holdings are getting large – worth watching.",
       RED: "One investment is too dominant – this is risky.",
     },
     expenseRatio: {
-      GREEN: "You're keeping costs low – more money stays invested.",
-      YELLOW: "Fees are moderate – there's room to save more.",
+      GREEN: "You are keeping costs low – more money stays invested.",
+      YELLOW: "Fees are moderate – there is room to save more.",
       RED: "High fees are eating into your returns.",
     },
     taxEfficiency: {
@@ -45,7 +50,12 @@ const getPlainEnglishExplanation = (status: 'GREEN' | 'YELLOW' | 'RED', category
     riskScore: {
       GREEN: "Your risk level matches your tolerance well.",
       YELLOW: "Risk is slightly off from your comfort zone.",
-      RED: "Your portfolio risk doesn't match your goals.",
+      RED: "Your portfolio risk does not match your goals.",
+    },
+    downsideResilience: {
+      GREEN: "Your portfolio is well protected against market drops.",
+      YELLOW: "Some improvements could reduce your downside risk.",
+      RED: "Your portfolio may suffer significantly in a downturn.",
     },
     incomeGap: {
       GREEN: "Retirement income looks secure – well planned!",
@@ -59,7 +69,7 @@ const getPlainEnglishExplanation = (status: 'GREEN' | 'YELLOW' | 'RED', category
     },
     default: {
       GREEN: "This area looks healthy.",
-      YELLOW: "There's room for improvement here.",
+      YELLOW: "There is room for improvement here.",
       RED: "This needs your attention.",
     },
   };
@@ -164,16 +174,20 @@ export function DiagnosticCard({
       </CardHeader>
       
       <CardContent className="p-4 sm:p-5 pt-0 sm:pt-0 space-y-4">
-        {/* Hero Metric Display */}
+        {/* Hero Metric Display - responsive font based on content length */}
         {result.headlineMetric && (
-          <div className="flex items-baseline gap-2">
+          <div className="flex items-baseline gap-2 flex-wrap">
             <span className={cn(
-              'text-3xl sm:text-4xl font-mono font-bold tracking-tight',
+              'font-mono font-bold tracking-tight break-words',
+              // Use smaller font for long metrics (like "Top Position: 13.2% | Top 10: 75%")
+              result.headlineMetric.length > 15 
+                ? 'text-lg sm:text-xl' 
+                : 'text-2xl sm:text-3xl',
               getMetricColor()
             )}>
               {result.headlineMetric}
             </span>
-            {result.score !== undefined && (
+            {result.score !== undefined && result.headlineMetric.length <= 15 && (
               <span className="text-sm text-muted-foreground">
                 score
               </span>
